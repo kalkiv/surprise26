@@ -24,11 +24,11 @@ window.App.TapeLock = class {
         
         const mat = new THREE.MeshStandardMaterial({ 
             color: boxColor, 
-            roughness: 0.9, 
-            opacity: 0.9, // Slightly translucent
-            transparent: true, 
+            roughness: 0.3,
+            metalness: 0.1,
+            opacity: 1.0, 
+            transparent: false, 
             side: THREE.DoubleSide,
-            depthWrite: false // Helps with transparency render order sometimes
         });
         
         this.tapeMesh = new THREE.Mesh(geo, mat);

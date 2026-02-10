@@ -85,22 +85,35 @@ window.addEventListener('load', () => {
             document.body.style.background = 'linear-gradient(135deg, #1a0022, #000000)';
         }
 
-        // TAPE ILLUMINATION
+        // TAPE ILLUMINATION & HIDDEN TEXT
         if(window.App.state && window.App.state.locks) {
             window.App.state.locks.forEach(lock => {
+                // Tape
                 if(lock.type === 'tape' && lock.instance && lock.instance.tapeMesh) {
                     const mat = lock.instance.tapeMesh.material;
                     if(isLightOn) {
                         // Reset
                         mat.emissive.setHex(0x000000);
                         mat.emissiveIntensity = 0;
-                        mat.opacity = 0.9;
+                        mat.opacity = 1.0;
                     } else {
                         // Glow
                         mat.emissive.setHex(0xff00ff); // Neon Pink/Magenta Glow
                         mat.emissiveIntensity = 2.0;
                         mat.opacity = 1.0;
                     }
+                }
+                
+            });
+        }
+        
+        // Heart Box Hidden Text (LV Pattern Texture Emissive)
+        if(typeof heartBox !== 'undefined' && heartBox.lidMaterials) {
+            heartBox.lidMaterials.forEach(mat => {
+                if(isLightOn) {
+                    mat.emissiveIntensity = 0;
+                } else {
+                    mat.emissiveIntensity = 4.0; // High intensity for visibility
                 }
             });
         }

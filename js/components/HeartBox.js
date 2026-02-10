@@ -14,6 +14,32 @@ window.App.HeartBox = class {
         this.initEffects();
     }
     
+    // Pattern Texture Generation (LV Style Staggered)
+    createPatternTexture() {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        // Black background (No Emissive)
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, size, size);
+        
+        // Text Settings
+        ctx.fillStyle = '#ff00ff'; // Neon Pink text
+        ctx.font = 'bold 160px "Times New Roman", Serif'; // Even Larger font
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Ultra Sparse - Just ONE Logo per Tile (Centered)
+        ctx.fillText('LOVE', 256, 256);
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        // Repeat settings applied in initMesh based on usage
+        return tex;
+    }
+
     initEffects() {
         // Inner Light (Volumetric feel)
         this.innerLight = new THREE.PointLight(0xffaa00, 0, 20);
@@ -30,8 +56,6 @@ window.App.HeartBox = class {
     createPolaroids() {
         this.polaroidGroup = new THREE.Group();
         // Position relative to inside of box.
-        // Card is centered. Let's put photos to the left or right.
-        // Left side seems open.
         this.polaroidGroup.position.set(-2, 0.2, 1); 
         this.polaroidGroup.rotation.x = -Math.PI / 2;
         this.polaroidGroup.rotation.z = Math.PI / 8; // Bit of angle
@@ -41,12 +65,11 @@ window.App.HeartBox = class {
             const meshGroup = window.App.GalleryInstance.createPolaroidMesh();
             
             // Assign Texture to Stack Item
-            // We use the first 3 photos for the 3 stack items
             const tex = window.App.GalleryInstance.getTexture(i);
             if(meshGroup.userData.photoMesh) {
                 meshGroup.userData.photoMesh.material.map = tex;
                 meshGroup.userData.photoMesh.material.needsUpdate = true;
-                // Make it white while loading/if fails? Or standard photo grey.
+                // Make it white while loading/if fails
                 meshGroup.userData.photoMesh.material.color.setHex(0xffffff); 
             }
 
@@ -58,7 +81,6 @@ window.App.HeartBox = class {
             meshGroup.rotation.z = rZ;
             
             // Make interactable
-            // Add userData to the children meshes that Raycaster expects
             meshGroup.traverse(c => {
                 if(c.isMesh) {
                     c.userData = { 
@@ -77,8 +99,6 @@ window.App.HeartBox = class {
     }
 
     createCard() {
-        // Dimensions: Closed 4x6 -> Open 8x6 (Two 4x6 panels)
-        // Let's make it 3.5 width x 5 height per panel for a nice card shape
         const w = 3.5;
         const h = 5;
         
@@ -90,7 +110,6 @@ window.App.HeartBox = class {
         this.group.add(this.cardGroup);
         
         // 1. Right Panel (The Back / Inside Right) - Static relative to group
-        // Positioned to the right of the spine (x=0)
         const rightGeo = new THREE.PlaneGeometry(w, h);
         rightGeo.translate(w/2, 0, 0); // Pivot at left edge (0,0)
         
@@ -99,7 +118,6 @@ window.App.HeartBox = class {
         
         this.rightPanel = new THREE.Mesh(rightGeo, rightMat);
         this.cardGroup.add(this.rightPanel);
-        // Add userData to children so raycaster hits them
         this.rightPanel.userData = { isNote: true, parentGroup: this.cardGroup, part: 'right' };
 
         // 2. Left Panel (The Cover / Inside Left) - Rotates around spine
@@ -110,46 +128,29 @@ window.App.HeartBox = class {
         const leftGeo = new THREE.PlaneGeometry(w, h);
         leftGeo.translate(-w/2, 0, 0); // Pivot at right edge (0,0)
         
-        // Front Face (Outside Cover) and Back Face (Inside Left)
-        // We'll use a group for the left panel to handle different textures for front/back if needed
-        // Or simple: DoubleSide plane? No, Front cover needs different art than Inside Left.
-        
-        // Let's use Multi-Material or just 2 planes back-to-back.
-        // Simplest: 2 Planes.
-        
-        // Inside Left (Matches Inside Right theme)
+        // Inside Left
         const leftInsideTex = window.App.CardContent.getInsideLeftTexture();
         const leftInsideMat = new THREE.MeshBasicMaterial({ map: leftInsideTex, side: THREE.FrontSide });
         this.leftPanelInside = new THREE.Mesh(leftGeo, leftInsideMat);
-        // Z slight offset to avoid fighting
         this.leftPanelInside.position.z = 0.01;
         this.hingeGroup.add(this.leftPanelInside);
         
         // Front Cover (Outside)
-        // Since geometry is translated -w/2, facing +Z is "Inside". Facing -Z is "Outside".
-        // We want the Cover to be visible when closed.
-        // Closed means Hinge Rot Y = 0 (Flat open) -> Hinge Rot Y = roughly 170 deg (Closed).
-        // Let's model it "Open Flat" as default (Rot 0).
-        // Then "Closed" is Rot Y = -Math.PI.
-        
-        // Cover Texture
         const coverTex = window.App.CardContent.getCoverTexture();
-        const coverMat = new THREE.MeshBasicMaterial({ map: coverTex, side: THREE.BackSide }); // BackSide sees it from outside
+        const coverMat = new THREE.MeshBasicMaterial({ map: coverTex, side: THREE.BackSide }); 
         this.coverPanel = new THREE.Mesh(leftGeo, coverMat);
         this.hingeGroup.add(this.coverPanel);
 
         this.coverPanel.userData = { isNote: true, parentGroup: this.cardGroup, part: 'cover' };
         this.leftPanelInside.userData = { isNote: true, parentGroup: this.cardGroup, part: 'left' };
         
-        // Initial State: Closed (Cover on Right, moves Left to Open)
-        // Cover Geo is [-W, 0]. Rot 180 puts it at [0, W] (Right, on top of Back).
+        // Initial State: Closed
         this.hingeGroup.rotation.y = Math.PI * 0.99; 
         
         // Reference for Main.js
         this.noteMesh = this.cardGroup; // For compatibility
         this.noteMesh.userData = { isNote: true, isCard: true };
     }
-
 
     update(time) {
         // No particle update needed
@@ -168,10 +169,7 @@ window.App.HeartBox = class {
 
         this.heartShape = heartShape;
 
-        // Total depth 4, but split into two halves of 2 (actually 1.5 depth + 2x0.5 bevel = 2.5 height each)
-        // Adjusted to match total height of 5 units (4 + 1)
-        
-        // For Lock compatibility, we pretend depth is 4 in settings
+        // Settings for Extrusion
         this.extrudeSettings = {
             depth: 4, 
             bevelEnabled: true,
@@ -189,17 +187,53 @@ window.App.HeartBox = class {
             bevelSize: 0.5,
             bevelThickness: 0.5
         };
+        
+        // Generate LV Pattern Texture
+        const patternTexSource = this.createPatternTexture();
+        patternTexSource.needsUpdate = true;
 
-        const material = new THREE.MeshStandardMaterial({
+        // Create separate textures for Top vs Sides to handle UV wrapping correctly
+        const topTex = patternTexSource.clone();
+        topTex.wrapS = THREE.RepeatWrapping;
+        topTex.wrapT = THREE.RepeatWrapping;
+        // Huge reduction in density (10-fold less). 3x3 -> 1x1.
+        topTex.repeat.set(1, 1); 
+
+        const sideTex = patternTexSource.clone();
+        sideTex.wrapS = THREE.RepeatWrapping;
+        sideTex.wrapT = THREE.RepeatWrapping;
+        // Perimeter ~60 units. 3 repeats horizontally.
+        // Height ~2.5 units. 0.2 slice height.
+        // Focusing on CENTER text (V=0.5). Slice 0.4 to 0.6.
+        sideTex.repeat.set(3, 0.2); 
+        sideTex.offset.set(0, 0.4);
+        sideTex.wrapS = THREE.RepeatWrapping;
+        sideTex.wrapT = THREE.RepeatWrapping;
+        // Perimeter ~60 units. Box Width 20. 60/20 = 3 repeats.
+        // Height ~2.5 units. Box Height 20. 2.5/20 = 0.125.
+        // Focusing on the bottom text row (V=0.25). 
+        // We show a slice of height 0.2 centered around 0.25 (offset 0.15).
+        sideTex.repeat.set(3, 0.2); 
+        sideTex.offset.set(0, 0.15);
+
+        const matParams = {
             color: window.App.CONFIG.colors.heart,
             roughness: 0.3,
             metalness: 0.1,
-        });
+            emissive: 0xffffff,
+            emissiveIntensity: 0
+        };
+
+        const topMat = new THREE.MeshStandardMaterial({ ...matParams, emissiveMap: topTex });
+        const sideMat = new THREE.MeshStandardMaterial({ ...matParams, emissiveMap: sideTex });
+        
+        const materials = [topMat, sideMat]; // Index 0: Top/Bottom, Index 1: Sides
+        this.lidMaterials = materials; // Expose array for light control
 
         // --- BASE ---
         const baseGeometry = new THREE.ExtrudeGeometry(heartShape, halfMeshSettings);
         baseGeometry.computeBoundingBox();
-        const centerOffset = new THREE.Vector3(); // Re-use calculating offset
+        const centerOffset = new THREE.Vector3();
         baseGeometry.boundingBox.getCenter(centerOffset).negate();
         baseGeometry.translate(centerOffset.x, centerOffset.y, centerOffset.z);
         baseGeometry.rotateZ(Math.PI);
@@ -208,7 +242,7 @@ window.App.HeartBox = class {
         this.centerOffset = centerOffset;
 
         this.baseGroup = new THREE.Group();
-        const baseMesh = new THREE.Mesh(baseGeometry, material);
+        const baseMesh = new THREE.Mesh(baseGeometry, materials); // Use Array
         baseMesh.rotation.x = -Math.PI / 2;
         baseMesh.castShadow = true;
         baseMesh.receiveShadow = true;
@@ -228,7 +262,7 @@ window.App.HeartBox = class {
         lidGeometry.rotateZ(Math.PI);
 
         this.lidGroup = new THREE.Group();
-        const lidMesh = new THREE.Mesh(lidGeometry, material);
+        const lidMesh = new THREE.Mesh(lidGeometry, materials); // Use Array
         lidMesh.rotation.x = -Math.PI / 2;
         lidMesh.castShadow = true;
         lidMesh.receiveShadow = true;
@@ -238,7 +272,7 @@ window.App.HeartBox = class {
         this.lidGroup.position.y = 1.25;
         this.group.add(this.lidGroup);
 
-        this.heartMesh = baseMesh; // Backward compat just in case
+        this.heartMesh = baseMesh; 
 
         // --- RING (Attached to Base) ---
         const ringSettings = {
