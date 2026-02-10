@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Heart Box Challenge</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Three.js from CDN (still works if internet is up, otherwise fails. But assuming standard connectivity) -->
+    <!-- If offline, user needs local three.js. I'll stick to CDN as per original file -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+</head>
+<body>
+
+    <!-- 3D World -->
+    <div id="world"></div>
+    
+    <!-- Dim Background Overlay -->
+    <div id="dim-overlay"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <!-- Header Removed -->
+
+        <div class="inventory-panel">
+            <div class="inv-title" style="font-size: 1.5rem;">Keys Collected: <span id="key-counter">0/0</span></div>
+        </div>
+        
+        <!-- Light Switch -->
+        <label class="light-switch">
+          <input type="checkbox" id="light-toggle" checked>
+          <span class="slider round"></span>
+          <span class="label-text">💡 Light</span>
+        </label>
+
+        <button id="open-btn">OPEN HEART ❤️</button>
+        
+        <div class="nav-label">Use buttons or arrow keys to rotate box</div>
+        <div class="nav-controls" id="box-controls">
+            <button class="nav-btn" id="nav-left" title="Rotate Left">←</button>
+            <button class="nav-btn" id="nav-home" title="Home View">⌂</button>
+            <button class="nav-btn" id="nav-flip" title="Flip Upside Down">↻</button>
+            <button class="nav-btn" id="nav-right" title="Rotate Right">→</button>
+        </div>
+
+        <div class="nav-controls" id="card-controls" style="display: none;">
+            <button class="nav-btn" id="card-prev" title="Close Card">←</button>
+            <div style="width: 44px;"></div> <!-- Spacer -->
+            <button class="nav-btn" id="card-next" title="Open Card">→</button>
+        </div>
+    </div>
+
+    <!-- Puzzle Modal -->
+    <div class="modal-overlay" id="puzzle-modal">
+        <div class="modal-card">
+            <span class="puzzle-icon">🔐</span>
+            <h2 id="puzzle-title">Locked!</h2>
+            <p id="puzzle-question">Solve this riddle to get the key.</p>
+            <input type="text" class="puzzle-input" id="puzzle-answer" placeholder="Your answer..." autocomplete="off">
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="modal-cancel">Later</button>
+                <button class="btn btn-primary" id="modal-submit">Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reward Modal -->
+    <div class="modal-overlay" id="reward-modal">
+        <div class="reward-card">
+            <span class="heart-icon">💖</span>
+            <h1>Congratulations!</h1>
+            <p>
+                You have successfully unlocked all the locks and opened the Heart Box!
+                <br>
+                <strong>"Love is the key that opens the gates of happiness."</strong>
+            </p>
+            <button class="btn btn-primary" onclick="window.location.reload()">Lock it again</button>
+        </div>
+    </div>
+
+    <!-- Gallery Modal -->
+    <div class="modal-overlay" id="gallery-modal">
+        <div class="gallery-container">
+            <button class="gallery-close" id="gallery-close-btn">&times;</button>
+            <div class="gallery-content">
+                <button class="gallery-nav" id="gallery-prev">&#10094;</button>
+                <div class="gallery-image-wrapper">
+                    <img id="gallery-image" src="" alt="Memory">
+                    <div class="gallery-counter" id="gallery-counter">1 / 4</div>
+                </div>
+                <button class="gallery-nav" id="gallery-next">&#10095;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span>🔑</span> <span id="toast-msg">You found a key!</span>
+    </div>
+
+    <!-- App Scripts (LOAD ORDER MATTERS) -->
+    <script src="js/state.js"></script>
+    
+    <!-- Puzzles -->
+    <script src="js/puzzles/Puzzle1.js"></script>
+    <script src="js/puzzles/Puzzle2.js"></script>
+    <script src="js/puzzles/Puzzle3.js"></script>
+    <script src="js/puzzles/Puzzle4.js"></script>
+    <script src="js/puzzles/Puzzle5.js"></script>
+    <script src="js/puzzles/Puzzle6.js"></script>
+    <script src="js/puzzles/PuzzleRegistry.js"></script>
+
+    <script src="js/utils/Tween.js"></script>
+    <script src="js/ui/PuzzleModal.js"></script>
+    <script src="js/ui/UIManager.js"></script>
+    <!-- Components -->
+    <script src="js/locks/HeartLock.js"></script>
+    <script src="js/locks/ScrewLock.js"></script>
+    <script src="js/locks/TapeLock.js"></script>
+    <script src="js/locks/DigitLock.js"></script>
+    <script src="js/locks/LockFactory.js"></script>
+    <script src="js/components/CardContent.js"></script>
+    <script src="js/components/PhotoGallery.js"></script>
+    <script src="js/components/HeartBox.js"></script>
+    <script src="js/components/CardboardBox.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
