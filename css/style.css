@@ -75,6 +75,34 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-main); b
     white-space: nowrap;
 }
 
+/* Tools Panel */
+.tools-panel {
+    position: absolute;
+    top: 8rem; right: 2rem;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.5);
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    pointer-events: auto;
+    transition: opacity 0.5s;
+}
+.tool-slot {
+    width: 60px; height: 60px;
+    background: rgba(255,255,255,0.6);
+    border: 2px dashed #999;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    cursor: grab;
+    transition: transform 0.2s;
+}
+.tool-slot:active { cursor: grabbing; }
+.tool-slot:hover { transform: scale(1.1); border-color: var(--secondary); background: #fff; }
+.tool-label { font-size: 0.8rem; font-weight: bold; color: var(--secondary); text-transform: uppercase; }
+
 @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
 
 /* Navigation Controls */
@@ -116,46 +144,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-main); b
 }
 .nav-controls:hover + .nav-label { opacity: 1; }
 
-/* Open Button */
-#open-btn {
-    position: absolute;
-    bottom: 7rem; left: 50%;
-    transform: translateX(-50%) scale(0);
-    background: linear-gradient(45deg, var(--primary), var(--secondary));
-    color: white;
-    border: none;
-    padding: 1rem 3rem;
-    font-size: 1.2rem;
-    font-weight: bold;
-    border-radius: 2rem;
-    cursor: pointer;
-    box-shadow: 0 10px 25px rgba(255, 71, 126, 0.4);
-    pointer-events: auto;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    z-index: 20;
-}
-#open-btn.visible { transform: translateX(-50%) scale(1); }
-#open-btn:hover { transform: translateX(-50%) scale(1.1); box-shadow: 0 15px 35px rgba(255, 71, 126, 0.6); }
 
-/* Debug Button */
-.btn-debug {
-    position: absolute;
-    top: 5rem; right: 2rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.8rem;
-    background: rgba(255, 0, 0, 0.1);
-    color: var(--secondary);
-    border: 1px dashed var(--secondary);
-    border-radius: 0.5rem;
-    cursor: pointer;
-    backdrop-filter: blur(5px);
-    transition: all 0.2s;
-    pointer-events: auto;
-}
-.btn-debug:hover {
-    background: var(--secondary);
-    color: white;
-}
 
 /* Light Switch */
 .light-switch {

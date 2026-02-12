@@ -9,6 +9,7 @@ window.App.CardboardBox = class CardboardBox {
         // State
         this.isOpen = false;
         this.isRemoved = false;
+        this.isTaped = true; // New state
         this.flaps = [];
 
         this.init();
@@ -114,7 +115,7 @@ window.App.CardboardBox = class CardboardBox {
             this.flaps.push({ pivot, conf, mesh });
         });
 
-        // Tape
+        // Tape on Flaps (Visual detail on flaps themselves)
         const tapeMat = new THREE.MeshBasicMaterial({ color: 0x8b7355 });
         const tapeStripGeo = new THREE.PlaneGeometry(flapLength, 2);
         const extMag = flapWidth - 0.2;
@@ -130,6 +131,47 @@ window.App.CardboardBox = class CardboardBox {
         tB.position.z = 0.02;
         tB.position.y = -extMag / 2 + 1; // Tip
         this.flaps[1].mesh.add(tB);
+
+        // --- SEALING TAPE (The obstruction) ---
+        // This tape goes across the middle seam (Z=0, Y=boxH/2)
+        // Length = boxW (Matched to edge). Width = 4.
+        const sealingTapeGeo = new THREE.PlaneGeometry(boxW, 4);
+        const sealingTapeMat = new THREE.MeshStandardMaterial({ 
+            color: 0x9c8266, // Slightly lighter or diff color
+            roughness: 0.9,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        this.sealingTape = new THREE.Mesh(sealingTapeGeo, sealingTapeMat);
+        this.sealingTape.rotation.x = -Math.PI / 2;
+        this.sealingTape.position.set(0, boxH / 2 + 0.05, 0); // Sit on top
+        
+        this.sealingTape.userData = { isSealingTape: true }; // Identification for Raycast
+        this.bodyGroup.add(this.sealingTape);
+
+        // --- KNIFE MESH (For Animation) ---
+        this.knifeGroup = new THREE.Group();
+        this.knifeGroup.visible = false;
+        
+        // Handle
+        const handleGeo = new THREE.BoxGeometry(2, 0.5, 0.5);
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const handle = new THREE.Mesh(handleGeo, handleMat);
+        handle.position.x = -1.5;
+        this.knifeGroup.add(handle);
+        
+        // Blade
+        const bladeGeo = new THREE.BoxGeometry(1.5, 0.2, 0.02);
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.position.x = 0.5; // Extends out
+        blade.position.y = -0.1;
+        this.knifeGroup.add(blade);
+        
+        // Add to body group so it moves with box
+        this.bodyGroup.add(this.knifeGroup);
     }
 
     setRotation(x, y) {
@@ -141,12 +183,68 @@ window.App.CardboardBox = class CardboardBox {
     checkClick(raycaster) {
         if(this.isOpen || this.isRemoved) return false;
 
+        // Only checking Cardboard hit for general click-to-open logic
         const intersects = raycaster.intersectObject(this.group, true);
         if(intersects.length > 0) {
+            
+            // IF TAPED, BLOCK OPENING
+            if(this.isTaped) {
+                // Shake box? Or Toolkit hint?
+                window.App.UIManager.showToast("It's taped shut. Use a tool!");
+                return true; // We handled the click
+            }
+
             this.animateOpen();
             return true;
         }
         return false;
+    }
+    
+    cutTape() {
+        if(!this.isTaped) return;
+        
+        // Start Position (Left side of tape)
+        // Tape length is boxW (26). Local X goes -13 to 13.
+        
+        this.knifeGroup.visible = true;
+        this.knifeGroup.position.set(-15, 8.5, 0); // Start off edge, slightly above tape (Y=8)
+        this.knifeGroup.rotation.z = -Math.PI / 8; // Angled down
+        
+        // Animate Cut Position: Sweeping motion (slow start/end)
+        window.TWEEN.to(this.knifeGroup.position, {
+            x: 15, // End off edge right
+            duration: 0.8,
+            ease: "power2.inOut", 
+            onComplete: () => {
+                this.knifeGroup.visible = false;
+                this.isTaped = false;
+                
+                // Remove Tool from UI
+                const toolEl = document.getElementById('tool-cutter');
+                if(toolEl) {
+                    toolEl.style.opacity = '0';
+                    setTimeout(() => toolEl.remove(), 500);
+                }
+
+                // Remove Tape
+                window.TWEEN.to(this.sealingTape.material, {
+                    opacity: 0,
+                    duration: 0.3,
+                    onComplete: () => {
+                        this.sealingTape.visible = false;
+                        // Auto Open Box
+                        this.animateOpen();
+                    }
+                });
+            }
+        });
+
+        // Animate Cut Rotation: Tilt blade into the cut
+        window.TWEEN.to(this.knifeGroup.rotation, {
+            z: -Math.PI / 4, // Steeper angle during cut
+            duration: 0.8,
+            ease: "power2.inOut"
+        });
     }
 
     animateOpen() {
@@ -174,6 +272,7 @@ window.App.CardboardBox = class CardboardBox {
             onComplete: () => {
                 this.group.visible = false;
                 this.isRemoved = true;
+                if(this.onOpenComplete) this.onOpenComplete();
             }
         });
     }

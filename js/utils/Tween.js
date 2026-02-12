@@ -4,7 +4,14 @@
 window.TWEEN = {
     _tweens: [],
     update(time) {
-        this._tweens = this._tweens.filter(t => t.update(time));
+        let i = 0;
+        while(i < this._tweens.length) {
+            if(this._tweens[i].update(time)) {
+                i++;
+            } else {
+                this._tweens.splice(i, 1);
+            }
+        }
     },
     to(target, props) {
         const duration = props.duration || 1;

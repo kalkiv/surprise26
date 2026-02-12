@@ -26,16 +26,25 @@ window.App.PuzzleModal = class {
             modalTitle: document.getElementById('puzzle-title'),
             modalQuestion: document.getElementById('puzzle-question'),
             modalInput: document.getElementById('puzzle-answer'),
-            btnCancel: document.getElementById('modal-cancel'),
+            btnCancel: document.getElementById('modal-cancel'), // Keeping ref to remove it
             btnSubmit: document.getElementById('modal-submit'),
             modalActions: document.querySelector('.modal-actions')
         };
     }
     
     bindEvents() {
+        // Remove Cancel Button if it exists (we use click-off to close now)
         if(this.elements.btnCancel) {
-            this.elements.btnCancel.addEventListener('click', () => this.close()); // Save happens in close
+            this.elements.btnCancel.remove();
+            this.elements.btnCancel = null;
         }
+        
+        // Click off modal to close
+        this.elements.modal.addEventListener('click', (e) => {
+            if (e.target === this.elements.modal) {
+                this.close();
+            }
+        });
         
         if(this.elements.btnSubmit) {
             this.elements.btnSubmit.addEventListener('click', () => this.checkAnswer());
@@ -50,6 +59,7 @@ window.App.PuzzleModal = class {
     
     open(id) {
         this.activeLockId = id;
+        this.isSolved = false; // Reset solve state
         
         // Fetch Puzzle Data
         const lock = window.App.state.locks.find(l => l.id === id);
@@ -62,8 +72,8 @@ window.App.PuzzleModal = class {
         // Reset UI
         this.elements.modalInput.value = "";
         this.elements.modalInput.classList.remove('hidden');
-        this.elements.btnSubmit.textContent = "Unlock";
-        this.elements.btnCancel.textContent = "Later";
+        this.elements.btnSubmit.textContent = "Check"; // Always start as Check
+        // btnCancel is removed
         this.elements.btnSubmit.classList.remove('btn-primary'); // Remove highlight if present
         
         // Remove helper buttons if any
@@ -132,8 +142,7 @@ window.App.PuzzleModal = class {
     
     setupPicturePuzzle(puzzle) {
         this.elements.modalInput.classList.add('hidden');
-        this.elements.btnSubmit.textContent = "Unlock";
-        this.elements.btnCancel.textContent = "Close";
+        this.elements.btnSubmit.textContent = "Check";
         
         const rows = puzzle.rows || 5;
         const cols = puzzle.cols || 5;
@@ -185,8 +194,7 @@ window.App.PuzzleModal = class {
 
     setupPaintByNumbers(puzzle) {
         this.elements.modalInput.classList.add('hidden');
-        this.elements.btnSubmit.textContent = "Finished";
-        this.elements.btnCancel.textContent = "Close";
+        this.elements.btnSubmit.textContent = "Check";
         
         // 1. Setup State
         const rows = puzzle.rows || 10;
@@ -271,7 +279,6 @@ window.App.PuzzleModal = class {
     setupCrossword(puzzle) {
         this.elements.modalInput.classList.add('hidden');
         this.elements.btnSubmit.textContent = "Check";
-        this.elements.btnCancel.textContent = "Close";
         
         const cols = puzzle.gridCols || 12;
         const rows = puzzle.gridRows || 12;
@@ -376,8 +383,7 @@ window.App.PuzzleModal = class {
     
     setupStrands(puzzle) {
         this.elements.modalInput.classList.add('hidden');
-        this.elements.btnSubmit.textContent = "Unlock"; // Will change to "Unlock" if solved
-        this.elements.btnCancel.textContent = "Close";
+        this.elements.btnSubmit.textContent = "Check";
 
         const cols = puzzle.cols || 6;
         const rows = puzzle.rows || 8;
@@ -578,8 +584,7 @@ window.App.PuzzleModal = class {
 
     setupFindDifferences(puzzle) {
         this.elements.modalInput.classList.add('hidden');
-        this.elements.btnSubmit.textContent = "Unlock";
-        this.elements.btnCancel.textContent = "Close";
+        this.elements.btnSubmit.textContent = "Check";
         
         // State
         const saved = window.App.state.puzzleProgress && window.App.state.puzzleProgress[puzzle.id];
@@ -588,6 +593,7 @@ window.App.PuzzleModal = class {
         // DOM
         const container = document.createElement('div');
         container.className = 'diff-container';
+        container.style.marginBottom = '20px'; // Fix spacing
         
         const createWrapper = (src, isInteractable) => {
             const wrapper = document.createElement('div');
@@ -636,13 +642,6 @@ window.App.PuzzleModal = class {
             if (foundIndex !== -1 && !this.foundDiffs.includes(foundIndex)) {
                 this.foundDiffs.push(foundIndex);
                 renderMarker(foundIndex);
-                
-                // Submit if all found?
-                if (this.foundDiffs.length === puzzle.differences.length) {
-                    // Update Button Text to indicate completion
-                    this.elements.btnSubmit.textContent = "Continue";
-                    this.elements.btnSubmit.classList.add('btn-primary'); // Ensure highlight
-                }
             }
         };
         
@@ -682,25 +681,31 @@ window.App.PuzzleModal = class {
 
     setupHangman(puzzle) {
         this.elements.modalInput.classList.add('hidden');
-        this.elements.btnSubmit.textContent = "Unlock";
-        this.elements.btnCancel.textContent = "Close";
+        this.elements.btnSubmit.textContent = "Check";
+        
+        // Word Bucket
+        const BUCKET = ['SWEETHEART', 'VALENTINE', 'CHOCOLATEY'];
         
         // State
         const saved = window.App.state.puzzleProgress && window.App.state.puzzleProgress[puzzle.id];
+        
         if (saved) {
             this.hangmanGuessed = saved.guessed || [];
             this.hangmanMistakes = saved.mistakes || 0;
+            this.hangmanTarget = saved.target || BUCKET[0]; // Fallback
         } else {
             this.hangmanGuessed = [];
             this.hangmanMistakes = 0;
+            // Pick Random
+            this.hangmanTarget = BUCKET[Math.floor(Math.random() * BUCKET.length)];
         }
         
-        const targetWord = puzzle.word.toUpperCase();
         const maxMistakes = puzzle.maxMistakes || 6;
         
         // DOM
         const container = document.createElement('div');
         container.className = 'hangman-container';
+        container.style.marginBottom = '20px'; // Fix spacing
         
         // Status (Mistakes)
         const status = document.createElement('div');
@@ -722,13 +727,31 @@ window.App.PuzzleModal = class {
              // Update Status
              status.textContent = `Mistakes: ${this.hangmanMistakes} / ${maxMistakes}`;
              if(this.hangmanMistakes >= maxMistakes) {
-                 status.textContent = "GAME OVER - Try Again";
+                 status.textContent = "GAME OVER";
                  status.style.color = "red";
+                 
+                 // Reuse Keyboard Area for Retry Button
+                 keyboard.innerHTML = '';
+                 const retryBtn = document.createElement('button');
+                 retryBtn.className = 'btn btn-secondary';
+                 retryBtn.textContent = 'Try Again (New Word)';
+                 retryBtn.onclick = () => {
+                     // Reset State
+                     this.hangmanGuessed = [];
+                     this.hangmanMistakes = 0;
+                     // New Word
+                     this.hangmanTarget = BUCKET[Math.floor(Math.random() * BUCKET.length)];
+                     render();
+                 };
+                 keyboard.appendChild(retryBtn);
+                 
+                 // Don't render word/keyboard normally
+                 return;
              }
              
              // Update Word
              wordDisplay.innerHTML = '';
-             const letters = targetWord.split('');
+             const letters = this.hangmanTarget.split('');
              let allCorrect = true;
              
              letters.forEach(char => {
@@ -741,11 +764,6 @@ window.App.PuzzleModal = class {
                  } else {
                      if(this.hangmanGuessed.includes(char)) {
                          slot.textContent = char;
-                     } else if (this.hangmanMistakes >= maxMistakes) {
-                         // Show remaining letters on loss? Or hide? Standard is show.
-                         slot.textContent = char;
-                         slot.style.color = "red"; 
-                         allCorrect = false;
                      } else {
                          slot.textContent = "";
                          allCorrect = false;
@@ -776,11 +794,6 @@ window.App.PuzzleModal = class {
                  keyboard.appendChild(key);
              });
              
-             // Check Win
-             if(allCorrect && this.hangmanMistakes < maxMistakes) {
-                 this.elements.btnSubmit.textContent = "Unlock";
-                 this.elements.btnSubmit.classList.add('btn-primary');
-             }
         };
         
         const handleGuess = (char) => {
@@ -788,9 +801,8 @@ window.App.PuzzleModal = class {
             
             this.hangmanGuessed.push(char);
             
-            if(!targetWord.includes(char)) {
+            if(!this.hangmanTarget.includes(char)) {
                 this.hangmanMistakes++;
-                // Shake effect?
                 this.shake(container);
             }
             
@@ -1003,7 +1015,8 @@ window.App.PuzzleModal = class {
                  // Save guessed letters
                  window.App.state.puzzleProgress[this.currentPuzzle.id] = {
                      guessed: [...(this.hangmanGuessed || [])],
-                     mistakes: this.hangmanMistakes || 0
+                     mistakes: this.hangmanMistakes || 0,
+                     target: this.hangmanTarget // Save target so we resume correct word
                  };
              }
         }
@@ -1022,6 +1035,13 @@ window.App.PuzzleModal = class {
     checkAnswer() {
         if(this.activeLockId === null) return;
         
+        // If already solved, click means "Unlock" / Proceed
+        if(this.isSolved) {
+            if(this.onSolveCallback) this.onSolveCallback(this.activeLockId);
+            this.close();
+            return;
+        }
+        
         const type = (this.currentPuzzle && this.currentPuzzle.type) || '';
         const isPicture = type.startsWith('picture');
         const isPaint = type === 'paint-by-numbers';
@@ -1029,68 +1049,51 @@ window.App.PuzzleModal = class {
         const isDiff = type === 'find-differences';
         const isHangman = type === 'hangman';
         
+        let isValid = false;
+        
         if(isHangman) {
-            const word = this.currentPuzzle.word.toUpperCase();
-            const won = word.split('').every(char => {
+            const word = (this.hangmanTarget || this.currentPuzzle.word || '').toUpperCase();
+            isValid = word.split('').every(char => {
                 if(char === ' ' || !/[A-Z]/.test(char)) return true;
                 return this.hangmanGuessed.includes(char);
             });
             
-            if(won) {
-                 if(this.onSolveCallback) this.onSolveCallback(this.activeLockId);
-                 this.close();
-            } else {
+            if(!isValid) {
                 const container = document.querySelector('.hangman-container');
                 this.shake(container);
             }
-            return;
-        }
-
-        if(isDiff) {
-            if(this.foundDiffs && this.foundDiffs.length === (this.currentPuzzle.differences.length || 7)) {
-                if(this.onSolveCallback) this.onSolveCallback(this.activeLockId);
-                 this.close();
-            } else {
+        } 
+        else if(isDiff) {
+            isValid = (this.foundDiffs && this.foundDiffs.length === (this.currentPuzzle.differences.length || 7));
+            if(!isValid) {
                 const diffContainer = document.querySelector('.diff-container');
                 this.shake(diffContainer);
             }
-            return;
         }
-
-        if(isStrands) {
-             if(this.strandsFoundWords && this.strandsFoundWords.length === this.currentPuzzle.words.length) {
-                 if(this.onSolveCallback) this.onSolveCallback(this.activeLockId);
-                 this.close();
-             } else {
+        else if(isStrands) {
+             isValid = (this.strandsFoundWords && this.strandsFoundWords.length === this.currentPuzzle.words.length);
+             if(!isValid) {
                  const container = document.querySelector('.strands-container');
                  this.shake(container);
              }
-             return;
         }
-
-        if(isPaint) {
-            // Validate Paint
+        else if(isPaint) {
             const target = this.currentPuzzle.target || [];
-            let isCorrect = true;
+            isValid = true;
             for(let i=0; i<target.length; i++) {
                 if(this.paintGridState[i] !== target[i]) {
-                    isCorrect = false;
+                    isValid = false;
                     break;
                 }
             }
             
-            if(isCorrect) {
-                if(this.onSolveCallback) this.onSolveCallback(this.activeLockId);
-                this.close();
-            } else {
+            if(!isValid) {
                  const grid = this.elements.modalCard.querySelector('.paint-grid');
                  this.shake(grid);
             }
-            return;
         }
-        
-        if (this.currentPuzzle && this.currentPuzzle.type === 'crossword') {
-            let isCorrect = true;
+        else if (type === 'crossword') {
+            isValid = true;
             this.currentPuzzle.words.forEach(w => {
                  const letters = w.word.toUpperCase().split('');
                  letters.forEach((l, idx) => {
@@ -1101,7 +1104,7 @@ window.App.PuzzleModal = class {
                     
                     const input = document.querySelector(`input[data-key="${gx}-${gy}"]`);
                     if(!input || input.value.toUpperCase() !== l) {
-                        isCorrect = false;
+                        isValid = false;
                         if(input) {
                             input.parentElement.style.backgroundColor = '#ffcccc';
                             setTimeout(() => { if(input) input.parentElement.style.backgroundColor = ''; }, 1000);
@@ -1110,43 +1113,77 @@ window.App.PuzzleModal = class {
                  });
             });
             
-            if(isCorrect) {
-                if(this.onSolveCallback) this.onSolveCallback(this.activeLockId);
-                this.close();
-            } else {
+            if(!isValid) {
                  const grid = document.querySelector('.crossword-grid');
                  this.shake(grid);
             }
-            return;
         }
-
-        if (isPicture) {
-            // Validate Grid Order
-            let isSolved = true;
+        else if (isPicture) {
+            isValid = true;
             for(let i=0; i<this.gridState.length; i++) {
                 if(this.gridState[i] !== i) {
-                    isSolved = false;
+                    isValid = false;
                     break;
                 }
             }
-            
-            if (isSolved) {
-                if(this.onSolveCallback) {
-                    this.onSolveCallback(this.activeLockId);
-                }
-                this.close();
-            } else {
+            if (!isValid) {
                 const grid = this.elements.modalCard.querySelector('.puzzle-grid');
                 this.shake(grid);
             }
-        
         } else {
-            // Default Logic
-            if(this.onSolveCallback) {
-                this.onSolveCallback(this.activeLockId);
+            // Standard Text Puzzle
+            if(this.currentPuzzle && this.currentPuzzle.answer) {
+                 const val = this.elements.modalInput.value.trim().toLowerCase();
+                 // Supports array of answers or single string
+                 if(Array.isArray(this.currentPuzzle.answer)) {
+                     isValid = this.currentPuzzle.answer.map(a=>a.toLowerCase()).includes(val);
+                 } else {
+                     isValid = (val === this.currentPuzzle.answer.toLowerCase());
+                 }
+                 
+                 if(!isValid) {
+                     this.shake(this.elements.modalInput);
+                 }
+            } else {
+                // If no answer defined, assume correct (e.g. read-only text?)
+                isValid = true; 
             }
-            this.close();
         }
+        
+        if(isValid) {
+            this.setSolvedState();
+        } else {
+            this.flashButtonError();
+        }
+    }
+    
+    flashButtonError() {
+        const btn = this.elements.btnSubmit;
+        
+        // Save original inline styles (usually empty if class-based)
+        const prevTransition = btn.style.transition;
+        const prevBg = btn.style.backgroundColor;
+        const prevColor = btn.style.color;
+        const prevBorder = btn.style.borderColor;
+        
+        // Apply Red Flash
+        btn.style.transition = 'background-color 0.2s, border-color 0.2s';
+        btn.style.backgroundColor = '#ff4444';
+        btn.style.borderColor = '#ff4444'; 
+        btn.style.color = 'white';
+        
+        setTimeout(() => {
+            btn.style.transition = prevTransition;
+            btn.style.backgroundColor = prevBg;
+            btn.style.borderColor = prevBorder;
+            btn.style.color = prevColor;
+        }, 500);
+    }
+
+    setSolvedState() {
+        this.isSolved = true;
+        this.elements.btnSubmit.textContent = "Unlock";
+        this.elements.btnSubmit.classList.add('btn-primary');
     }
     
     shake(element) {

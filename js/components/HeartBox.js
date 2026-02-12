@@ -2,7 +2,7 @@
 window.App = window.App || {};
 
 window.App.HeartBox = class {
-    constructor(scene) {
+    constructor(scene, isProp = false) {
         this.scene = scene;
         this.group = new THREE.Group();
         this.scene.add(this.group);
@@ -10,8 +10,13 @@ window.App.HeartBox = class {
         this.group.rotation.y = 0;
         
         this.initMesh();
-        this.initLocks();
-        this.initEffects();
+        
+        // Always init locks (visually), but prevent interaction if prop
+        this.initLocks(isProp);
+        
+        if (!isProp) {
+            this.initEffects();
+        }
     }
     
     // Pattern Texture Generation (LV Style Staggered)
@@ -308,7 +313,7 @@ window.App.HeartBox = class {
         this.baseGroup.add(ringMesh);
     }
     
-    initLocks() {
+    initLocks(isProp) {
         const lockConfigs = [
             // HEARTS
             { type: 'heart', t: 0.5, id: 0 }, 
@@ -337,15 +342,17 @@ window.App.HeartBox = class {
             
             this.group.add(lockData.container);
             
-            window.App.state.locks.push({
-                mesh: lockData.mesh,
-                container: lockData.container,
-                instance: lockData.instance, 
-                id: config.id,
-                type: config.type,
-                solved: false,
-                puzzle: window.App.puzzles[config.id % window.App.puzzles.length]
-            });
+            if(!isProp) {
+                window.App.state.locks.push({
+                    mesh: lockData.mesh,
+                    container: lockData.container,
+                    instance: lockData.instance, 
+                    id: config.id,
+                    type: config.type,
+                    solved: false,
+                    puzzle: window.App.puzzles[config.id % window.App.puzzles.length]
+                });
+            }
         });
     }
     

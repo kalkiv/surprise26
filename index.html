@@ -25,6 +25,17 @@
             <div class="inv-title" style="font-size: 1.5rem;">Keys Collected: <span id="key-counter">0/0</span></div>
         </div>
         
+        <!-- Tools Panel -->
+        <div class="tools-panel" id="tools-panel">
+            <div class="tool-slot" id="tool-cutter" draggable="true" title="Drag to Box to Cut Tape" style="display: none;">
+                🔪
+            </div>
+            <div class="tool-slot" id="tool-hammer" draggable="true" title="Drag to Mirrors to Smash" style="display: none;">
+                🔨
+            </div>
+            <div class="tool-label">Tools</div>
+        </div>
+
         <!-- Light Switch -->
         <label class="light-switch">
           <input type="checkbox" id="light-toggle" checked>
@@ -32,14 +43,19 @@
           <span class="label-text">💡 Light</span>
         </label>
 
-        <button id="open-btn">OPEN HEART ❤️</button>
-        
         <div class="nav-label">Use buttons or arrow keys to rotate box</div>
         <div class="nav-controls" id="box-controls">
+            <!-- Back Button -->
+            <button id="back-scene-btn" class="nav-btn" title="Back to Room" style="border-radius: 2rem; width: auto; padding: 0 1rem; opacity: 0; pointer-events: none; margin-right: 1rem;">
+                ← Back
+            </button>
             <button class="nav-btn" id="nav-left" title="Rotate Left">←</button>
             <button class="nav-btn" id="nav-home" title="Home View">⌂</button>
             <button class="nav-btn" id="nav-flip" title="Flip Upside Down">↻</button>
             <button class="nav-btn" id="nav-right" title="Rotate Right">→</button>
+            <div style="width: 20px;"></div>
+            <button class="nav-btn" id="nav-zoom-out" title="Zoom Out">-</button>
+            <button class="nav-btn" id="nav-zoom-in" title="Zoom In">+</button>
         </div>
 
         <div class="nav-controls" id="card-controls" style="display: none;">
@@ -112,6 +128,28 @@
     <script src="js/utils/Tween.js"></script>
     <script src="js/ui/PuzzleModal.js"></script>
     <script src="js/ui/UIManager.js"></script>
+    
+    <!-- Utilities -->
+    <script src="js/utils/TextureFactory.js"></script>
+    
+    <!-- Room Objects -->
+    <script src="js/roomObjects/Bookshelf.js"></script>
+    <script src="js/roomObjects/Bed.js"></script>
+    <script src="js/roomObjects/SideTable.js"></script>
+    <script src="js/roomObjects/MirrorGrid.js"></script>
+    <script src="js/roomObjects/FlowerGrid.js"></script>
+    <script src="js/roomObjects/LongPillow.js"></script>
+    <script src="js/roomObjects/SquarePillow.js"></script>
+    <script src="js/roomObjects/HolePillow.js"></script>
+    <script src="js/roomObjects/FlowerBlanket.js"></script>
+    <script src="js/roomObjects/StripeBlanket.js"></script>
+    <script src="js/roomObjects/FlowerPainting.js"></script>
+    
+    <!-- Scenes -->
+    <script src="js/scenes/IntroScene.js"></script>
+    <script src="js/scenes/PackageScene.js"></script>
+    <script src="js/scenes/PuzzleScene.js"></script>
+
     <!-- Components -->
     <script src="js/locks/HeartLock.js"></script>
     <script src="js/locks/ScrewLock.js"></script>
