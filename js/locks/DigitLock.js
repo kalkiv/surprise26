@@ -5,8 +5,10 @@ window.App.DigitLock = class {
     constructor(solution = ['1', '2', '3', '4']) {
         this.mesh = new THREE.Group();
         this.solution = solution;
-        this.current = ['A', 'A', 'A', 'A']; // Default start
-        this.digits = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+        // Start same length as solution
+        this.current = new Array(solution.length).fill('A');
+        // Include numbers and letters
+        this.digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         this.textures = []; // Store textures to update them
         this.activeSlot = null; // For keyboard navigation
         this.isSolved = false;
@@ -15,8 +17,12 @@ window.App.DigitLock = class {
     }
 
     createMesh() {
+        const count = this.solution.length;
+        const spacing = 1.0;
+        const width = count * spacing + 0.5;
+        
         // Base Plate
-        const plateGeo = new THREE.BoxGeometry(4.5, 0.4, 3.5);
+        const plateGeo = new THREE.BoxGeometry(width, 0.4, 3.5);
         const plateMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7, roughness: 0.4 });
         const plate = new THREE.Mesh(plateGeo, plateMat);
         plate.castShadow = true;
@@ -25,10 +31,9 @@ window.App.DigitLock = class {
         this.mesh.add(plate);
 
         // Digits & Arrows
-        const startX = -1.5;
-        const spacing = 1.0;
+        const startX = -((count - 1) * spacing) / 2;
         
-        for(let i=0; i<4; i++) {
+        for(let i=0; i<count; i++) {
             const x = startX + (i * spacing);
             
             // 1. Display Screen (The Digit)
@@ -175,7 +180,7 @@ window.App.DigitLock = class {
         this.updateTexture(this.activeSlot);
         
         // Move to next slot
-        const next = (this.activeSlot + 1) % 4; // Wrap around
+        const next = (this.activeSlot + 1) % this.current.length; // Wrap around
         this.selectSlot(next);
     }
 
@@ -214,7 +219,7 @@ window.App.DigitLock = class {
         this.isSolved = true;
         
         // Update all textures to reflect solved state
-        for(let i=0; i<4; i++) {
+        for(let i=0; i<this.current.length; i++) {
             this.updateTexture(i);
         }
         

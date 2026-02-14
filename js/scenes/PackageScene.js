@@ -55,6 +55,13 @@ window.App.Scenes.PackageScene = class PackageScene {
     }
     
     update(time) {
-        // No heavy update loop needed for scene 1 usually
+        if(!this.isActive) return;
+        
+        // Gentle hover matching IntroScene (Amplitude 0.5, Speed 2)
+        // Only if NOT animating open (falling)
+        if(!this.cardboardBox.isOpen) {
+            const offset = Math.sin(time * 2) * 0.5;
+            this.cardboardBox.group.position.y = offset;
+        }
     }
 };

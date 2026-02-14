@@ -330,8 +330,8 @@ window.App.HeartBox = class {
             { type: 'tape', x: -4, y: -2, id: 7 }, 
             { type: 'tape', x: 4, y: -2, id: 8 },
             
-            // DIGIT LOCK (Top Center) - Solution 'LOVE'
-            { type: 'digit', x: 0, y: 0, id: 9, solution: ['L', 'O', 'V', 'E'] }
+            // DIGIT LOCK (Top Center) - Solution '1L0V3U'
+            { type: 'digit', x: 0, y: 0, id: 9, solution: ['1', 'L', '0', 'V', '3', 'U'] }
         ];
 
         // Tapes don't count for victory
@@ -351,6 +351,14 @@ window.App.HeartBox = class {
                     type: config.type,
                     solved: false,
                     puzzle: window.App.puzzles[config.id % window.App.puzzles.length]
+                });
+            } else {
+                // Store prop locks for visual syncing
+                if(!this.propLocks) this.propLocks = [];
+                this.propLocks.push({
+                     container: lockData.container,
+                     id: config.id,
+                     type: config.type
                 });
             }
         });

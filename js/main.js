@@ -3,6 +3,7 @@ window.addEventListener('load', () => {
     // Init Scene
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x5C3644, -100, 300);
+    window.App.mainScene = scene; // Expose scene
 
     const frustumSize = 40;
     const aspect = window.innerWidth / window.innerHeight;
@@ -16,6 +17,7 @@ window.addEventListener('load', () => {
     );
     camera.position.set(40, 40, 40); 
     camera.lookAt(0, 0, 0);
+    window.App.mainCamera = camera; // Expose camera
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -58,12 +60,19 @@ window.addEventListener('load', () => {
     scene.add(spotLight.target);
 
     // --- SCENE MANAGEMENT ---
-    const introScene = new window.App.Scenes.IntroScene(scene, camera);
-    const packageScene = new window.App.Scenes.PackageScene(scene, camera);
-    const puzzleScene = new window.App.Scenes.PuzzleScene(scene, camera);
+    // Instantiate scenes and store globally for access by Apps/other scenes
+    window.App.Scenes.introSceneInstance = new window.App.Scenes.IntroScene(scene, camera);
+    window.App.Scenes.packageSceneInstance = new window.App.Scenes.PackageScene(scene, camera);
+    window.App.Scenes.puzzleSceneInstance = new window.App.Scenes.PuzzleScene(scene, camera);
+    window.App.Scenes.heartSceneInstance = new window.App.Scenes.HeartScene(scene, camera);
+
+    const introScene = window.App.Scenes.introSceneInstance;
+    const packageScene = window.App.Scenes.packageSceneInstance;
+    const puzzleScene = window.App.Scenes.puzzleSceneInstance;
+    const heartScene = window.App.Scenes.heartSceneInstance;
     
     let activeScene = introScene;
-    window.App.currentScene = 'intro'; // 'intro', 'package', 'puzzle'
+    window.App.currentScene = 'intro'; // 'intro', 'package', 'puzzle', 'heart'
     window.App.isPackageOpened = false; // Track if cardboard box is removed
 
     function switchToScene(newSceneObj, newSceneId) {
@@ -79,39 +88,37 @@ window.addEventListener('load', () => {
         // Special case: If going to Intro, update prop visibility
         if(newSceneId === 'intro') {
              if(introScene.updateProps) introScene.updateProps();
-             // Important: Hide PuzzleScene heartbox which might be visible from Package Scene
              if(puzzleScene.heartBox) puzzleScene.heartBox.group.visible = false;
         }
 
         setTimeout(() => {
-            activeScene.enter(window.App.currentScene === 'intro' ? 'package' : window.App.currentScene); // Pass previous context if needed, though activeScene is already updating. 
-            // Wait, window.App.currentScene is ALREADY updated to newSceneId above.
-            // I need to capture oldSceneId before updating.
-            if(newSceneId === 'package' || newSceneId === 'puzzle') {
-                // SEAMLESS TRANSITION FIX
-                // Since IntroScene now zooms in further (to match apparent size of 1.0),
-                // we set the camera zoom to 1.0 immediately to prevent any visual jump.
+            activeScene.enter(); 
+            
+            if(newSceneId === 'package' || newSceneId === 'puzzle' || newSceneId === 'heart') {
                 if(isLeavingIntro) {
-                    camera.zoom = 1.0;
+                    camera.zoom = 1.0; 
+                    camera.position.set(40, 40, 40);
+                    camera.lookAt(0, 0, 0);
                     camera.updateProjectionMatrix();
                 }
 
-                // Ensure default camera for object views
-                window.TWEEN.to(camera.position, {
-                    x: 40, y: 40, z: 40,
-                    duration: 1.5,
-                    ease: "power2.inOut",
-                    onUpdate: () => camera.lookAt(0, 0, 0)
-                });
-                window.TWEEN.to(camera, {
-                    zoom: 1.0, 
-                    duration: 1.5,
-                    ease: "power2.inOut",
-                    onUpdate: () => camera.updateProjectionMatrix()
-                });
+                if(newSceneId !== 'heart') {
+                    // Default camera for object views (Heart handles its own camera)
+                    window.TWEEN.to(camera.position, {
+                        x: 40, y: 40, z: 40,
+                        duration: 1.5,
+                        ease: "power2.inOut",
+                        onUpdate: () => camera.lookAt(0, 0, 0)
+                    });
+                    window.TWEEN.to(camera, {
+                        zoom: 1.0, 
+                        duration: 1.5,
+                        ease: "power2.inOut",
+                        onUpdate: () => camera.updateProjectionMatrix()
+                    });
+                }
             }
 
-            // Visual continuity for Package Scene
              if(newSceneId === 'package') {
                 puzzleScene.heartBox.group.visible = true; 
              }
@@ -120,8 +127,12 @@ window.addEventListener('load', () => {
         }, delay);
     }
 
-    // Scene Transition 1: Intro -> Package (or Puzzle if opened)
+    // Scene Transition 1: Intro -> Package
     introScene.onComplete = () => {
+        const currentRot = 0; 
+        window.App.state.rotY = currentRot;
+        targetYRotation = currentRot; 
+        
         if(window.App.isPackageOpened) {
             switchToScene(puzzleScene, 'puzzle');
         } else {
@@ -131,23 +142,34 @@ window.addEventListener('load', () => {
 
     // Scene Transition 2: Package -> Puzzle
     packageScene.onComplete = () => {
-        window.App.isPackageOpened = true; // Mark as opened
+        window.App.isPackageOpened = true; 
         switchToScene(puzzleScene, 'puzzle');
+    };
+
+    // Scene Transition 3: Puzzle -> Heart (Triggered via logic)
+    // PuzzleScene logic calls this when solving
+    // We need to hook into puzzle completion.
+    // Assuming PuzzleScene or Main checks for completion.
+    // Let's modify PuzzleScene.handleLockSolved in main.js admin logic or override it.
+    // PuzzleScene handles its own logic, but we need to know when it opens.
+    // PuzzleScene calls `heartBox.animateOpen()` internally usually? 
+    // No, PuzzleScene has `handleLockSolved`.
+    // We should override/inject completion logic.
+    
+    // Check if PuzzleScene emits event or callback.
+    // Currently relying on Admin menu or internal checks.
+    // Main.js had Admin.solvePuzzle logic.
+    
+    // We'll expose a global function to trigger Heart Scene Transition
+    window.App.triggerHeartScene = () => {
+        switchToScene(heartScene, 'heart');
     };
 
     // Back Button Logic
     function goBackOneScene() {
-       if(window.App.currentScene === 'puzzle') {
-           // If package opened, skip package scene and go to intro
-           if(window.App.isPackageOpened) {
-               switchToScene(introScene, 'intro');
-           } else {
-               // Should be impossible if isPackageOpened is set correctly, but fallback
-               switchToScene(packageScene, 'package');
-           }
-       } else if(window.App.currentScene === 'package') {
-           switchToScene(introScene, 'intro');
-       }
+       homeView();
+       // Always go back to Intro Scene as per user request
+       switchToScene(introScene, 'intro');
     }
     
     const backBtn = document.getElementById('back-scene-btn');
@@ -159,7 +181,7 @@ window.addEventListener('load', () => {
         const backBtn = document.getElementById('back-scene-btn');
         if(backBtn) {
             if(sceneId === 'intro') {
-                backBtn.style.opacity = '0';
+                backBtn.style.opacity = '0.3'; 
                 backBtn.style.pointerEvents = 'none';
             } else {
                 backBtn.style.opacity = '1';
@@ -180,52 +202,19 @@ window.addEventListener('load', () => {
             scene.fog.color.setHex(0x5C3644); 
             document.body.style.background = 'linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end))';
         } else {
-            spotLight.color.setHex(0x7a00ff); 
-            spotLight.intensity = 2.5; 
+            spotLight.color.setHex(0xffffff); 
+            spotLight.intensity = 0.0; 
             ambientLight.intensity = 0.1; 
             keyLight.intensity = 0.1;
             fillLight.intensity = 0.1;
-            scene.fog.color.setHex(0x110022); 
-            document.body.style.background = 'linear-gradient(135deg, #1a0022, #000000)';
+            scene.fog.color.setHex(0x050505); 
+            document.body.style.background = 'linear-gradient(135deg, #111111, #000000)';
         }
 
-        // Spotlight Focus for Intro Scene (Box Highlight)
-        if(activeScene === introScene) {
-            if(!isLightOn) {
-                // Focus Light on Box (Center Bed)
-                // Base pos (-15, -1, 0)
-                // Move SpotLight Target
-                window.TWEEN.to(spotLight.target.position, {
-                    x: -15, y: -1, z: 0,
-                    duration: 1.0,
-                    ease: "power2.inOut"
-                });
-                // Narrow the beam
-                window.TWEEN.to(spotLight, {
-                    angle: Math.PI / 8,
-                    duration: 1.0,
-                    ease: "power2.inOut"
-                });
-            } else {
-                // Reset Light
-                window.TWEEN.to(spotLight.target.position, {
-                    x: 0, y: 0, z: 0,
-                    duration: 1.0,
-                    ease: "power2.inOut"
-                });
-                window.TWEEN.to(spotLight, {
-                    angle: Math.PI / 6,
-                    duration: 1.0,
-                    ease: "power2.inOut"
-                });
-            }
-        }
-
-        // TAPE ILLUMINATION & HIDDEN TEXT needs access to locks (in PuzzleScene)
+        // TAPE ILLUMINATION & HIDDEN TEXT
         if(puzzleScene.heartBox) { 
             if(window.App.state && window.App.state.locks) {
                 window.App.state.locks.forEach(lock => {
-                    // Tape
                     if(lock.type === 'tape' && lock.instance && lock.instance.tapeMesh) {
                         const mat = lock.instance.tapeMesh.material;
                         if(isLightOn) {
@@ -258,7 +247,6 @@ window.addEventListener('load', () => {
         });
     }
 
-    // Start Intro Scene
     activeScene.enter(); 
     updateUIForScene('intro');
     if(toggle) updateLights(toggle.checked);
@@ -266,6 +254,85 @@ window.addEventListener('load', () => {
     // --- RAYCASTER ---
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+
+    // --- ADMIN MENU LOGIC ---
+    window.App.Admin = {
+        setScene: (name) => {
+            if(name === 'intro') switchToScene(introScene, 'intro');
+            if(name === 'package') switchToScene(packageScene, 'package');
+            if(name === 'puzzle') switchToScene(puzzleScene, 'puzzle');
+            if(name === 'heart') switchToScene(heartScene, 'heart');
+        },
+        toggleLight: () => {
+             const t = document.getElementById('light-toggle');
+             if(t) { t.checked = !t.checked; t.dispatchEvent(new Event('change')); }
+        },
+        breakMirrors: (doBreak) => {
+             if(introScene && introScene.mirrorGrid) {
+                introScene.mirrorGrid.group.children.forEach(m => {
+                    if(doBreak) {
+                        introScene.mirrorGrid.breakMirror(m);
+                    } else {
+                        // Fix
+                         const glass = m.children.find(c => c.userData.isMirror);
+                         if(glass) {
+                             glass.visible = true; glass.userData.isBroken = false;
+                         }
+                         if(glass && glass.userData.backingMesh) glass.userData.backingMesh.visible = false;
+                         for(let i=m.children.length-1; i>=0; i--) {
+                             let c = m.children[i];
+                             if(c.geometry.type === 'BufferGeometry') m.remove(c);
+                         }
+                    }
+                });
+                introScene.brokenMirrors = doBreak ? 6 : 0;
+             }
+        },
+        toggleTools: (collect) => {
+            ['tool-cutter', 'tool-hammer', 'tool-box'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.style.display = collect ? 'flex' : 'none';
+            });
+        },
+        solvePuzzle: (index) => {
+             const locks = window.App.state.locks;
+             if(!locks) return;
+             
+             if(index === 'all') {
+                locks.forEach(l => {
+                     if(!l.solved && puzzleScene.handleLockSolved) puzzleScene.handleLockSolved(l.id);
+                });
+             } else {
+                 if(locks[index]) {
+                      if(!locks[index].solved && puzzleScene.handleLockSolved) puzzleScene.handleLockSolved(locks[index].id);
+                 }
+             }
+        },
+        unsolveAll: () => {
+             const locks = window.App.state.locks;
+             if(!locks) return;
+             
+             window.App.state.keysCollected = 0;
+             if(window.App.UIManager && window.App.UIManager.updateInventory) window.App.UIManager.updateInventory();
+
+             locks.forEach(l => {
+                 l.solved = false;
+                 if(l.container) {
+                     window.TWEEN.killTweensOf(l.container.scale);
+                     l.container.visible = true;
+                     l.container.scale.set(1, 1, 1);
+                 }
+             });
+             if(window.App.UIManager && window.App.UIManager.showToast) window.App.UIManager.showToast("Puzzles reset!");
+        }
+    };
+
+    window.addEventListener('keydown', (e) => {
+        if(e.key === '`') {
+             const p = document.getElementById('admin-panel');
+             if(p) p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+        }
+    });
 
     // --- DIGIT LOCK ZOOM STATE ---
     let isDigitZoomed = false;
@@ -321,7 +388,7 @@ window.addEventListener('load', () => {
     let targetXRotation = 0;
 
     function updateBoxRot() {
-        if(activeScene === puzzleScene) {
+        if(activeScene === puzzleScene || activeScene === heartScene) {
             puzzleScene.heartBox.group.rotation.y = window.App.state.rotY;
             puzzleScene.heartBox.group.rotation.x = window.App.state.rotX;
         }
@@ -341,7 +408,6 @@ window.addEventListener('load', () => {
     function rotate(dir) {
         if(window.App.state.isBoxOpen) return;
         
-        // Intro Scene Delegation
         if(activeScene === introScene) {
             introScene.rotate(dir);
             return;
@@ -371,7 +437,6 @@ window.addEventListener('load', () => {
         if(dir === 'in') target += 0.2;
         if(dir === 'out') target -= 0.2;
         
-        // Bounds
         if(target < 0.2) target = 0.2;
         if(target > 5.0) target = 5.0;
 
@@ -393,7 +458,7 @@ window.addEventListener('load', () => {
                 x: 40, y: 40, z: 40, duration: 1.0, ease: "power2.inOut", onUpdate: () => camera.lookAt(0, 0, 0)
             });
             window.TWEEN.to(camera, {
-                zoom: 0.4, // Default for Intro
+                zoom: 0.4, 
                 duration: 1.0, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix()
             });
             return;
@@ -434,7 +499,6 @@ window.addEventListener('load', () => {
         currentLockSimulatedRot = targetVal;
     }
 
-    // Event Listener for Home View Request (sent from PuzzleScene)
     window.addEventListener('request-home-view', () => homeView());
 
     document.getElementById('nav-left').addEventListener('click', () => rotate('left'));
@@ -462,6 +526,14 @@ window.addEventListener('load', () => {
         });
         toolHammer.addEventListener('dragend', () => { dragTool = null; });
     }
+    const toolBox = document.getElementById('tool-box');
+    if(toolBox) {
+        toolBox.addEventListener('dragstart', (e) => {
+            dragTool = 'box';
+            e.dataTransfer.effectAllowed = 'copy';
+        });
+        toolBox.addEventListener('dragend', () => { dragTool = null; });
+    }
 
     window.addEventListener('dragover', (e) => e.preventDefault());
     window.addEventListener('drop', (e) => {
@@ -471,7 +543,6 @@ window.addEventListener('load', () => {
         mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
 
-        // Generic delegation if scene supports onDrop
         if(activeScene && typeof activeScene.onDrop === 'function') {
             activeScene.onDrop(dragTool, raycaster);
         }
@@ -487,7 +558,6 @@ window.addEventListener('load', () => {
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
 
-        // Active Card Handling (Global overlay logic)
         if(window.App.activeCardGroup) {
              const cardGroup = window.App.activeCardGroup;
              const cardIntersects = raycaster.intersectObject(cardGroup, true);
@@ -505,29 +575,19 @@ window.addEventListener('load', () => {
         
         if(window.App.isGalleryOpen) return;
 
-        // SCENE SPECIFIC
-        if(activeScene === introScene) {
-            introScene.onPointerDown(raycaster);
-            return;
-        }
-
-        if(activeScene === packageScene) {
-            packageScene.onPointerDown(raycaster);
-            return;
-        }
-
-        if(activeScene === puzzleScene) {
-            const result = puzzleScene.onPointerDown(
+        // SCENE SPECIFIC DELEGATION
+        if(activeScene && typeof activeScene.onPointerDown === 'function') {
+            const result = activeScene.onPointerDown(
                 raycaster, 
                 isDigitZoomed, 
                 activeDigitLock, 
                 () => zoomOutFromDigitLock(), 
                 (inst) => zoomToDigitLock(inst)
             );
-            
+
             if(typeof result === 'object') {
                 if(result.type === 'polaroid') {
-                     openGallery(result.index);
+                     collectPhotos();
                 } else if(result.type === 'note') {
                      openCard(result.target);
                 }
@@ -535,16 +595,24 @@ window.addEventListener('load', () => {
         }
     });
 
+    // Global Functions for Scenes
+    window.App.main = {
+        openGallery: openGallery
+    };
+
     // --- GALLERY / CARD LOGIC (DOM HEAVY) ---
     const galleryModal = document.getElementById('gallery-modal');
     const galleryImage = document.getElementById('gallery-image');
     const galleryCounter = document.getElementById('gallery-counter');
     function updateGalleryUI() {
         const gallery = window.App.GalleryInstance;
-        if(gallery.currentIndex < 0) gallery.currentIndex = gallery.photos.length - 1;
-        if(gallery.currentIndex >= gallery.photos.length) gallery.currentIndex = 0;
+        const limit = Math.max(1, window.App.state.photosCollected); 
+        
+        if(gallery.currentIndex < 0) gallery.currentIndex = Math.min(limit - 1, gallery.photos.length - 1);
+        if(gallery.currentIndex >= limit) gallery.currentIndex = 0;
+        
         galleryImage.src = gallery.photos[gallery.currentIndex];
-        galleryCounter.textContent = `${gallery.currentIndex + 1} / ${gallery.photos.length}`;
+        galleryCounter.textContent = `${gallery.currentIndex + 1} / ${limit}`;
     }
     function updateGallery(dir) {
         const gallery = window.App.GalleryInstance;
@@ -557,55 +625,24 @@ window.addEventListener('load', () => {
     document.getElementById('gallery-prev').addEventListener('click', () => updateGallery('prev'));
 
     function openGallery(index) {
-        if(!window.App.state.isBoxOpen) return;
         window.App.isGalleryOpen = true;
         if(index !== undefined) window.App.GalleryInstance.currentIndex = index;
         updateGalleryUI();
         if(galleryModal) galleryModal.classList.add('active');
-        toggleUI(false);
         document.querySelector('.nav-label').textContent = "Gallery Open";
     }
 
     function closeGallery() {
         if(galleryModal) galleryModal.classList.remove('active');
         window.App.isGalleryOpen = false;
-        toggleUI(true);
+        // toggleUI(true); // Don't hide/restore UI to keep phone accessible?
         if(window.App.activeCardGroup) {} else {
              const boxControls = document.getElementById('box-controls');
-             if(boxControls) boxControls.style.display = 'flex';
+             // if(boxControls) boxControls.style.display = 'flex'; // Only if we are not in Heart Scene mode which hides controls?
+             // Heart scene manages its own UI state.
+             if(activeScene !== heartScene && boxControls) boxControls.style.display = 'flex';
         }
-        document.querySelector('.nav-label').textContent = "Box Opened";
-    }
-
-    function toggleUI(show) {
-        const uiElements = [
-            document.querySelector('.inventory-panel'),
-            document.querySelector('.light-switch'),
-            document.querySelector('.nav-label')
-        ];
-
-        // Back button visibility
-        const backBtn = document.getElementById('back-scene-btn');
-        if(backBtn) {
-            if(show && window.App.currentScene !== 'intro') {
-                backBtn.style.opacity = '1';
-                backBtn.style.pointerEvents = 'auto';
-            } else {
-                backBtn.style.opacity = '0';
-                backBtn.style.pointerEvents = 'none';
-            }
-        }
-
-        uiElements.forEach(el => {
-            if(el) {
-                el.style.opacity = show ? '1' : '0';
-                el.style.pointerEvents = show ? 'auto' : 'none';
-            }
-        });
-        const boxControls = document.getElementById('box-controls');
-        if(boxControls) boxControls.style.display = show ? 'flex' : 'none';
-        const cardControls = document.getElementById('card-controls');
-        if(cardControls) cardControls.style.display = 'none'; // Default hidden
+        document.querySelector('.nav-label').textContent = (activeScene === heartScene) ? "Click items to explore." : "Box Opened";
     }
 
     // Card Logic
@@ -627,8 +664,6 @@ window.addEventListener('load', () => {
             // Move Box Away
             window.TWEEN.to(puzzleScene.heartBox.group.position, { y: -200, duration: 1.0, ease: "cubic.inOut" });
             
-            toggleUI(false);
-
             window.TWEEN.to(cardGroup.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 1.0, ease: "cubic.inOut" });
             window.TWEEN.to(cardGroup.scale, { x: targetScale.x, y: targetScale.y, z: targetScale.z, duration: 1.0, ease: "cubic.inOut" });
             window.TWEEN.to(cardGroup.rotation, { x: camera.rotation.x, y: camera.rotation.y, z: camera.rotation.z, duration: 1.0, ease: "cubic.inOut",
@@ -654,8 +689,7 @@ window.addEventListener('load', () => {
              window.TWEEN.to(puzzleScene.heartBox.hingeGroup.rotation, { y: Math.PI * 0.99, duration: 0.5, ease: "cubic.in" });
         }
 
-        toggleUI(true);
-        document.querySelector('.nav-label').textContent = "Box Opened";
+        document.querySelector('.nav-label').textContent = (activeScene === heartScene) ? "Click items to explore." : "Box Opened";
 
         window.TWEEN.to(puzzleScene.heartBox.group.position, { y: Math.sin(clock.getElapsedTime()) * 0.5, duration: 1.0, ease: "cubic.inOut" });
         
@@ -699,8 +733,9 @@ window.addEventListener('load', () => {
         
         if(isDigitZoomed && activeDigitLock) {
             const currentSlot = activeDigitLock.activeSlot;
-            if(e.key === 'ArrowLeft') activeDigitLock.selectSlot((currentSlot - 1 + 4) % 4);
-            else if(e.key === 'ArrowRight') activeDigitLock.selectSlot((currentSlot + 1) % 4);
+            const len = activeDigitLock.current.length;
+            if(e.key === 'ArrowLeft') activeDigitLock.selectSlot((currentSlot - 1 + len) % len);
+            else if(e.key === 'ArrowRight') activeDigitLock.selectSlot((currentSlot + 1) % len);
             else if(e.key === 'ArrowUp') activeDigitLock.cycle(currentSlot, -1);
             else if(e.key === 'ArrowDown') activeDigitLock.cycle(currentSlot, 1);
             else if(e.key === 'Enter' || e.key === ' ') {
@@ -752,6 +787,22 @@ window.addEventListener('load', () => {
         if(activeScene) activeScene.update(time);
 
         renderer.render(scene, camera);
+    }
+    
+    // collectPhotos function
+    function collectPhotos() {
+        if(window.App.state.photosCollected >= 10) {
+             window.App.UIManager.showToast("You have found all photos!");
+             return;
+        }
+
+        const grant = 3;
+        window.App.state.photosCollected = Math.min(10, window.App.state.photosCollected + grant);
+        
+        const photoCounter = document.getElementById('photo-counter');
+        if(photoCounter) photoCounter.textContent = `${window.App.state.photosCollected}/10`;
+        
+        window.App.UIManager.showToast(`Found ${grant} Photos! Check your phone.`);
     }
 
     animate();

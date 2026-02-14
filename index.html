@@ -23,6 +23,7 @@
 
         <div class="inventory-panel">
             <div class="inv-title" style="font-size: 1.5rem;">Keys Collected: <span id="key-counter">0/0</span></div>
+            <div class="inv-title" style="font-size: 1.2rem; margin-top: 5px;">Photos: <span id="photo-counter">0/10</span></div>
         </div>
         
         <!-- Tools Panel -->
@@ -32,6 +33,12 @@
             </div>
             <div class="tool-slot" id="tool-hammer" draggable="true" title="Drag to Mirrors to Smash" style="display: none;">
                 🔨
+            </div>
+            <div class="tool-slot" id="tool-box" draggable="true" title="Drag to Bed" style="display: none;">
+                📦
+            </div>
+            <div class="tool-slot" id="tool-phone" title="Click to View" style="display: none; cursor: pointer;">
+                📱
             </div>
             <div class="tool-label">Tools</div>
         </div>
@@ -62,6 +69,50 @@
             <button class="nav-btn" id="card-prev" title="Close Card">←</button>
             <div style="width: 44px;"></div> <!-- Spacer -->
             <button class="nav-btn" id="card-next" title="Open Card">→</button>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="admin-panel" style="display: none;">
+            <h3>Admin Menu</h3>
+            
+            <div class="admin-section">
+                <span>Scene:</span>
+                <button onclick="window.App.Admin.setScene('intro')">1</button>
+                <button onclick="window.App.Admin.setScene('package')">2</button>
+                <button onclick="window.App.Admin.setScene('puzzle')">3</button>
+                <button onclick="window.App.Admin.setScene('heart')">4</button>
+            </div>
+
+            <div class="admin-section">
+                <button onclick="window.App.Admin.toggleLight()">Toggle Lights</button>
+            </div>
+
+            <div class="admin-section">
+                <span>Mirrors:</span>
+                <button onclick="window.App.Admin.breakMirrors(true)">Break</button>
+                <button onclick="window.App.Admin.breakMirrors(false)">Fix</button>
+            </div>
+
+            <div class="admin-section">
+                <span>Tools:</span>
+                <button onclick="window.App.Admin.toggleTools(true)">Collect</button>
+                <button onclick="window.App.Admin.toggleTools(false)">Return</button>
+            </div>
+
+            <div class="admin-section">
+                <div>Puzzles:</div>
+                <button onclick="window.App.Admin.solvePuzzle('all')">All</button>
+                <button onclick="window.App.Admin.unsolveAll()">Unsolve All</button>
+                <div class="grid-buttons">
+                    <button onclick="window.App.Admin.solvePuzzle(0)">1</button>
+                    <button onclick="window.App.Admin.solvePuzzle(1)">2</button>
+                    <button onclick="window.App.Admin.solvePuzzle(2)">3</button>
+                    <button onclick="window.App.Admin.solvePuzzle(3)">4</button>
+                    <button onclick="window.App.Admin.solvePuzzle(4)">5</button>
+                    <button onclick="window.App.Admin.solvePuzzle(5)">6</button>
+                    <button onclick="window.App.Admin.solvePuzzle(6)">7</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -107,6 +158,180 @@
             </div>
         </div>
     </div>
+    
+    <!-- Phone Modal -->
+    <div class="modal-overlay" id="phone-modal">
+        <div class="phone-screen-container">
+             <div class="phone-body">
+                 <div class="phone-notch"></div>
+                 <div class="phone-display">
+                     <div class="phone-status-bar">
+                        <span id="phone-clock-small">12:00</span>
+                        <span>📶 🔋</span>
+                     </div>
+
+                     <!-- Home Screen -->
+                     <div id="phone-home-screen" class="phone-screen active">
+                         <div class="phone-clock-large" id="phone-clock-large">12:00</div>
+                         <div class="app-grid">
+                             <div class="app-item" onclick="window.App.Phone.openApp('phone')">
+                                 <div class="app-icon" style="background:#4cd964">📞</div>
+                                 <span>Phone</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('messages')">
+                                 <div class="app-icon" style="background:#34c759">💬</div>
+                                 <span>Messages</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('internet')">
+                                 <div class="app-icon" style="background:#007aff">🌐</div>
+                                 <span>Internet</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('photos')">
+                                 <div class="app-icon" style="background:conic-gradient(#ff3b30, #ff9500, #ffcc00, #4cd964, #5ac8fa, #007aff, #5856d6, #ff2d55)">🖼️</div>
+                                 <span>Photos</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('smarthome')">
+                                 <div class="app-icon" style="background:#ff9500">🏠</div>
+                                 <span>Home</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('heartbox')">
+                                 <div class="app-icon" style="background:#ff2d55">💖</div>
+                                 <span>HeartBox</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('news')">
+                                 <div class="app-icon" style="background:#ff3b30">📰</div>
+                                 <span>News</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('maps')">
+                                 <div class="app-icon" style="background:#5ac8fa">🗺️</div>
+                                 <span>Maps</span>
+                             </div>
+                             <div class="app-item" onclick="window.App.Phone.openApp('notes')">
+                                 <div class="app-icon" style="background:#ffcc00">📝</div>
+                                 <span>Notes</span>
+                             </div>
+                         </div>
+                     </div>
+
+                     <!-- Apps -->
+                     <div id="app-phone" class="phone-app">
+                         <div class="app-header">Phone <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content-scroll">
+                             <div class="call-log-item">
+                                 <div class="caller-icon">V</div>
+                                 <div class="caller-info">
+                                     <div class="caller-name">Vinny</div>
+                                     <div class="call-type">Incoming Call</div>
+                                 </div>
+                                 <div class="call-time">10:30 AM</div>
+                             </div>
+                             <div class="call-log-item">
+                                 <div class="caller-icon self">M</div>
+                                 <div class="caller-info">
+                                     <div class="caller-name">Me</div>
+                                     <div class="call-type">Outgoing Call</div>
+                                 </div>
+                                 <div class="call-time">Yesterday</div>
+                             </div>
+                             <!-- Repeat -->
+                             <div class="call-log-item"><div class="caller-icon">V</div><div class="caller-info"><div class="caller-name">Vinny</div><div class="call-type">Missed Call</div></div><div class="call-time">Yesterday</div></div>
+                         </div>
+                     </div>
+
+                     <div id="app-messages" class="phone-app">
+                         <div class="app-header">Vinny <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content-scroll messages-container">
+                             <div class="msg-bubble received">Hey! Happy Valentine's Day! ❤️</div>
+                             <div class="msg-bubble sent">Happy Valentine's! I love you!</div>
+                             <div class="msg-bubble received">I have a surprise for you... check under the bed 😉</div>
+                             <div class="msg-bubble sent">Ooo exciting! On my way to look!</div>
+                         </div>
+                     </div>
+
+                     <div id="app-internet" class="phone-app">
+                         <div class="app-header">Safari <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content center-content">
+                             <h2>Google</h2>
+                             <div class="search-bar-fake">Happy Valentine's Day Ideas...</div>
+                         </div>
+                     </div>
+
+                     <div id="app-photos" class="phone-app">
+                         <div class="app-header">Photos <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content-scroll">
+                             <div class="photos-grid-container" id="phone-photos-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;">
+                                 <!-- Populated via JS -->
+                             </div>
+                         </div>
+                     </div>
+
+                     <div id="app-smarthome" class="phone-app">
+                         <div class="app-header">Home <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content-scroll">
+                             <div class="home-device-card">
+                                 <h3>Bookshelf Light</h3>
+                                 <label>Brightness</label>
+                                 <input type="range" min="0" max="2" step="0.1" value="1.2" oninput="window.App.Phone.updateLight('book', 'brightness', this.value)">
+                                 <label>Color</label>
+                                 <input type="color" value="#FFFFE0" onchange="window.App.Phone.updateLight('book', 'color', this.value)">
+                             </div>
+                             <div class="home-device-card">
+                                 <h3>Geometric Lamp</h3>
+                                 <label>Brightness</label>
+                                 <input type="range" min="0" max="2" step="0.1" value="1.0" oninput="window.App.Phone.updateLight('geo', 'brightness', this.value)">
+                                 <label>Color</label>
+                                 <input type="color" value="#FFFFFF" onchange="window.App.Phone.updateLight('geo', 'color', this.value)">
+                             </div>
+                         </div>
+                     </div>
+
+                     <div id="app-heartbox" class="phone-app">
+                         <div class="app-header">HeartBox <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content center-content">
+                             <button class="btn btn-primary" onclick="window.open(window.location.href, '_blank')">Open Website</button>
+                         </div>
+                     </div>
+
+                     <div id="app-news" class="phone-app">
+                         <div class="app-header">News <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content-scroll">
+                             <div class="news-article">
+                                 <h4>BREAKING: Couple Goals Achieved</h4>
+                                 <p>Sources confirm Vinny and Vidhi are having an amazing celebration.</p>
+                             </div>
+                             <div class="news-article">
+                                 <h4>Valentine's Day Special</h4>
+                                 <p>Chocolate sales skyrocket as love fills the air.</p>
+                             </div>
+                             <div class="news-article">
+                                 <h4>Weather Report</h4>
+                                 <p>100% chance of romance tonight.</p>
+                             </div>
+                         </div>
+                     </div>
+
+                     <div id="app-maps" class="phone-app">
+                         <div class="app-header">Maps <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content" style="background:#e5e5e5; display: flex; align-items: center; justify-content: center; color: #555;">
+                             (Map View Placeholder)
+                             📍 You are here (In Love)
+                         </div>
+                     </div>
+
+                     <div id="app-notes" class="phone-app">
+                         <div class="app-header">Notes <span class="app-close" onclick="window.App.Phone.closeApp()">&times;</span></div>
+                         <div class="app-content-scroll">
+                             <div class="note-item" onclick="alert('Grocery List: \n- Milk\n- Eggs\n- Chocolate')">Grocery List</div>
+                             <div class="note-item" onclick="alert('Ideas:\n- Buy flowers\n- Plan dinner')">Gift Ideas</div>
+                             <div class="note-item" onclick="alert('Remember to water the plants!')">To Do</div>
+                         </div>
+                     </div>
+
+                 </div>
+                 <button class="phone-home-btn" id="phone-home-btn"></button>
+             </div>
+        </div>
+    </div>
 
     <!-- Toast Notification -->
     <div class="toast" id="toast">
@@ -144,11 +369,20 @@
     <script src="js/roomObjects/FlowerBlanket.js"></script>
     <script src="js/roomObjects/StripeBlanket.js"></script>
     <script src="js/roomObjects/FlowerPainting.js"></script>
+    <script src="js/roomObjects/Carpet.js"></script>
+    <script src="js/roomObjects/GeometricLamp.js"></script>
+    <script src="js/roomObjects/SilverBonsai.js"></script>
     
     <!-- Scenes -->
     <script src="js/scenes/IntroScene.js"></script>
     <script src="js/scenes/PackageScene.js"></script>
     <script src="js/scenes/PuzzleScene.js"></script>
+    <script src="js/scenes/HeartScene.js"></script>
+
+    <!-- Phone System -->
+    <script src="js/phone/Phone.js"></script>
+    <script src="js/phone/apps/PhotosApp.js"></script>
+    <script src="js/phone/apps/SmartHomeApp.js"></script>
 
     <!-- Components -->
     <script src="js/locks/HeartLock.js"></script>

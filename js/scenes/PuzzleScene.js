@@ -23,10 +23,13 @@ window.App.Scenes.PuzzleScene = class PuzzleScene {
 
                 if(window.App.state.keysCollected >= window.App.state.totalLocks) {
                     setTimeout(() => {
-                        this.homeView(); // Orient back to home
-                        window.App.UIManager.showOpenButton();
-                        window.App.UIManager.showToast("All keys found! Open the Box!");
-                        this.heartBox.pulse();
+                        this.homeView(); 
+                        if (window.App.triggerHeartScene) {
+                            window.App.triggerHeartScene();
+                        } else {
+                            // Fallback if Main not updated yet
+                            console.error("triggerHeartScene not defined");
+                        }
                     }, 1000);
                 }
                 if(onComplete) onComplete();
@@ -61,8 +64,9 @@ window.App.Scenes.PuzzleScene = class PuzzleScene {
     update(time) {
         if(this.heartBox.update) this.heartBox.update(time);
         
-        // Floating Heart effect
-        this.heartBox.group.position.y = Math.sin(time) * 0.5;
+        // Floating Heart effect matching Intro/Package scene
+        // Amplitude 0.5, Speed 2
+        this.heartBox.group.position.y = Math.sin(time * 2) * 0.5;
     }
 
     // --- Interaction Delegation ---
@@ -187,5 +191,27 @@ window.App.Scenes.PuzzleScene = class PuzzleScene {
         // Ideally this Scene class handles view logic too, but Camera is shared.
         // For now, trigger custom event.
         window.dispatchEvent(new CustomEvent('request-home-view'));
+    }
+
+    spawnConfetti() {
+        const colors = ['#ff477e', '#ff85a9', '#6e44ff', '#ffffff'];
+        const confettiCount = 100;
+        
+        for(let i=0; i<confettiCount; i++) {
+            const el = document.createElement('div');
+            el.classList.add('confetti');
+            el.style.left = Math.random() * 100 + 'vw';
+            el.style.top = -10 + 'px';
+            el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            el.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            el.style.transform = `rotate(${Math.random() * 360}deg)`;
+            
+            document.body.appendChild(el);
+            
+            // Cleanup
+            setTimeout(() => {
+                if(el && el.parentNode) el.parentNode.removeChild(el);
+            }, 5000);
+        }
     }
 };

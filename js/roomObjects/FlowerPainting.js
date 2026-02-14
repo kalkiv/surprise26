@@ -19,7 +19,12 @@ window.App.RoomObjects.FlowerPainting = class FlowerPainting {
         // Canvas
         const canvasSize = pSize - 2*frameThick; // 20
         const artTex = window.App.Utils.TextureFactory.createSingleFlowerTex();
-        const artMat = new THREE.MeshBasicMaterial({ map: artTex });
+        // Use StandardMaterial so it reacts to light changes (dimming)
+        const artMat = new THREE.MeshStandardMaterial({ 
+            map: artTex,
+            roughness: 0.8,
+            metalness: 0.1
+        });
         
         const canvasMesh = new THREE.Mesh(new THREE.PlaneGeometry(canvasSize, canvasSize), artMat);
         canvasMesh.position.z = 0.6; // Slightly in front of frame center

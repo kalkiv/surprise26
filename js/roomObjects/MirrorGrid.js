@@ -22,6 +22,14 @@ window.App.RoomObjects.MirrorGrid = class MirrorGrid {
         const mWidth = 12; 
         const mHeight = 18; 
         
+        // Hidden Password Characters (1l0v3u)
+        // Row 1 (Top): 1, l, 0
+        // Row 0 (Bottom): v, 3, u
+        const hiddenChars = [
+            ['v', '3', 'u'], // r=0
+            ['1', 'l', '0']  // r=1
+        ];
+
         for(let r=0; r<mRows; r++) { 
             for(let c=0; c<mCols; c++) { 
                 const m = new THREE.Group();
@@ -33,6 +41,13 @@ window.App.RoomObjects.MirrorGrid = class MirrorGrid {
                 const border = new THREE.Mesh(new THREE.BoxGeometry(mWidth, mHeight, 1), mirrorBorderMat);
                 border.castShadow = true;
                 m.add(border);
+
+                // Hidden Backing with Character
+                const char = hiddenChars[r][c];
+                const backing = this.createBackingMesh(mWidth - 1, mHeight - 1, char);
+                backing.position.z = 0.55; // Slightly behind glass position (0.6) but in front of wall
+                backing.visible = false; // Hidden initially
+                m.add(backing);
                 
                 // Glass
                 const glass = new THREE.Mesh(new THREE.BoxGeometry(mWidth - 1, mHeight - 1, 0.2), mirrorGlassMat);
@@ -54,11 +69,34 @@ window.App.RoomObjects.MirrorGrid = class MirrorGrid {
                 m.add(swipeMesh);
 
                 // Add metadata
-                glass.userData = { isMirror: true, isBroken: false, swipeMesh: swipeMesh, parentGroup: m };
+                glass.userData = { isMirror: true, isBroken: false, swipeMesh: swipeMesh, parentGroup: m, backingMesh: backing };
 
                 this.group.add(m);
             }
         }
+    }
+
+    createBackingMesh(w, h, char) {
+        // Canvas Texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 384; 
+        const ctx = canvas.getContext('2d');
+        
+        // Dark Background (Wall hole)
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(0, 0, 256, 384);
+        
+        // Character (White/Grey scribbled look)
+        ctx.fillStyle = '#aaaaaa';
+        ctx.font = 'bold 150px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(char.toUpperCase(), 128, 192);
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.MeshBasicMaterial({ map: tex });
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+        return mesh;
     }
 
     breakMirror(mirrorGroup) {
@@ -67,18 +105,16 @@ window.App.RoomObjects.MirrorGrid = class MirrorGrid {
         if(!glass || glass.userData.isBroken) return false;
 
         glass.userData.isBroken = true;
-        glass.visible = false; // Hide original
+        glass.visible = false; // Hide glass
 
-        // Create Broken Effect
-        // 1. Dark backing (The wall/hole behind mirror)
+        // Show Hidden Backing (Password Character)
+        if(glass.userData.backingMesh) {
+            glass.userData.backingMesh.visible = true;
+        }
+        
+        // Define dims for shards
         const gw = glass.geometry.parameters.width;
         const gh = glass.geometry.parameters.height;
-        const backing = new THREE.Mesh(
-            new THREE.PlaneGeometry(gw, gh),
-            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 })
-        );
-        backing.position.z = 0.55; // Moved forward to avoid Z-fighting with frame (Frame ends at 0.5)
-        mirrorGroup.add(backing);
 
         // 2. Add Shards
         const shardMat = new THREE.MeshStandardMaterial({ 

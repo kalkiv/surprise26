@@ -93,8 +93,8 @@ window.App.RoomObjects.SideTable = class SideTable {
              const face = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 10), woodMat);
              face.castShadow = true;
              face.receiveShadow = true;
-             // Mark face for Raycaster
-             face.userData = { parentDrawer: grp };
+             // Mark face for Raycaster & Specific Interaction
+             face.userData = { parentDrawer: grp, isDrawerFace: true };
              grp.add(face);
              
              // --- KNOB ---
@@ -150,35 +150,62 @@ window.App.RoomObjects.SideTable = class SideTable {
         this.botDrawerGroup.userData = { isDrawer: true, isOpen: false, originalX: 7.5 };
         
         // --- BOX CUTTER PROP ---
-        // Matching CardboardBox.js design
         const cutter = new THREE.Group();
         
-        // Handle (Values from PackageScene logic)
-        const handleGeo = new THREE.BoxGeometry(2, 0.5, 0.5);
-        const handleMat = new THREE.MeshStandardMaterial({ color: 0x333333 }); // Dark Grey
+        // 1. Main Handle Body (Red Plastic)
+        const handleGeo = new THREE.BoxGeometry(2.5, 0.6, 0.5);
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0xcc0000, roughness: 0.5 }); // Red
         const handle = new THREE.Mesh(handleGeo, handleMat);
-        handle.position.x = -1.0; // Centered relative to group origin
-        // Tagging
+        handle.position.set(-0.5, 0, 0);
         handle.userData = { isCutterProp: true, parentDrawer: this.botDrawerGroup };
         cutter.add(handle);
+
+        // 2. Black Rubber Grip (Middle/Rear)
+        const gripGeo = new THREE.BoxGeometry(1.5, 0.65, 0.55); // Slightly larger than handle
+        const gripMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+        const grip = new THREE.Mesh(gripGeo, gripMat);
+        grip.position.set(-1.0, 0, 0);
+        grip.userData = { isCutterProp: true, parentDrawer: this.botDrawerGroup };
+        cutter.add(grip);
+
+        // 3. Metal Blade Guide (Front Tip)
+        const guideGeo = new THREE.BoxGeometry(0.8, 0.5, 0.15);
+        const guideMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.4 });
+        const guide = new THREE.Mesh(guideGeo, guideMat);
+        guide.position.set(1.0, 0, 0); // Front of handle
+        guide.userData = { isCutterProp: true, parentDrawer: this.botDrawerGroup };
+        cutter.add(guide);
+
+        // 4. The Blade (Trapezoid Tip)
+        const bladeShape = new THREE.Shape();
+        bladeShape.moveTo(0, 0);
+        bladeShape.lineTo(1.2, 0); // Bottom edge
+        bladeShape.lineTo(1.5, 0.4); // Sharp Tip
+        bladeShape.lineTo(0, 0.4);   // Top edge
+        bladeShape.lineTo(0, 0);     // Close
+
+        const bladeSettings = { depth: 0.02, bevelEnabled: false };
+        const bladeGeom = new THREE.ExtrudeGeometry(bladeShape, bladeSettings);
+        const bladeMaterial = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.1 });
+        const blade = new THREE.Mesh(bladeGeom, bladeMaterial);
         
-        // Blade
-        const bladeGeo = new THREE.BoxGeometry(1.5, 0.2, 0.02);
-        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
-        const blade = new THREE.Mesh(bladeGeo, bladeMat);
-        blade.position.x = 1.0; // Extends out
-        blade.position.y = -0.1;
-        // Tagging
+        // Orient and position blade
+        blade.position.set(0.5, -0.2, -0.01); // Center inside handle/guide
         blade.userData = { isCutterProp: true, parentDrawer: this.botDrawerGroup };
         cutter.add(blade);
+
+        // 5. Slider Knob (Top)
+        const sliderGeo = new THREE.BoxGeometry(0.4, 0.2, 0.3);
+        const sliderMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        const knob = new THREE.Mesh(sliderGeo, sliderMat);
+        knob.position.set(0.0, 0.35, 0);
+        knob.userData = { isCutterProp: true, parentDrawer: this.botDrawerGroup };
+        cutter.add(knob);
         
-        // Pos: Centered in Drawer
-        // Drawer Depth 12 (X goes -0.5 to -12.5). Center X ~ -6.5.
-        // Drawer Width 8.8. Center Z = 0.
-        // Height: Base at -2. Rest on top (~ -1.75).
-        cutter.position.set(-6, -1.75, 0);
+        // Pos: Right side of drawer
+        cutter.position.set(-6, -1.75, -2.5);
         
-        // Add hit volume for easier clicking
+        // Hitbox
         const hitGeo = new THREE.BoxGeometry(4, 1, 2);
         const hitMat = new THREE.MeshBasicMaterial({ visible: false });
         const hitMesh = new THREE.Mesh(hitGeo, hitMat);

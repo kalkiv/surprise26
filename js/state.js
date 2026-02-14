@@ -20,5 +20,6 @@ window.App.state = {
     locks: [], // { mesh, id, solved, puzzle, container }
     rotY: 0,
     rotX: 0,
-    isBoxOpen: false
+    isBoxOpen: false,
+    photosCollected: 0
 };

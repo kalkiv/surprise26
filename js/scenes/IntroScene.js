@@ -14,6 +14,7 @@ window.App.Scenes.IntroScene = class IntroScene {
         this.initRoom();
         
         this.onComplete = null;
+        this.isBoxPlaced = window.App.isPackageOpened || false;
     }
 
     initRoom() {
@@ -77,7 +78,17 @@ window.App.Scenes.IntroScene = class IntroScene {
         // Bed
         const bed = new window.App.RoomObjects.Bed();
         bed.group.position.set(-15, -14, 0); 
+        // Tag for drag-and-drop detection
+        bed.group.traverse(o => { if (o.isMesh) o.userData.isBedPart = true; });
         this.group.add(bed.group);
+
+        // Carpet (Added under foot of bed)
+        const carpet = new window.App.RoomObjects.Carpet();
+        // Bed Foot is at X=+10 (World). Carpet starts slightly under (X=+5) and extends out.
+        // Carpet Length 33 -> Center X = 5 + 16.5 = 21.5.
+        // Floor Top is Y=-20. Carpet Height 0.4 -> Center Y = -19.8.
+        carpet.group.position.set(21.5, -19.8, 0);
+        this.group.add(carpet.group);
         
         // Blankets
         // Flower Blanket: 75% from bottom. Ends at 23.5 (short of 25 to avoid collision).
@@ -86,14 +97,29 @@ window.App.Scenes.IntroScene = class IntroScene {
         const blk1 = new window.App.RoomObjects.FlowerBlanket();
         blk1.mesh.scale.set(2.4, 1, 1); 
         blk1.mesh.position.set(5.5, 10.25, 0); 
+        // Base Width 15. Store props for peeling logic.
+        blk1.mesh.userData = { 
+            isBlanket: true, isFlowerBlanket: true, isOpen: false, 
+            baseWidth: 15, originalScaleX: 2.4, originalX: 5.5 
+        };
+        // Traverse to tag children for raycaster
+        blk1.mesh.traverse(c => { if(c.isMesh) c.userData = { isBlanket: true, isFlowerBlanket: true, parentBlanket: blk1.mesh }; });
         bed.group.add(blk1.mesh);
 
         // Stripe Blanket: 25% from bottom. Ends at 23.5.
-        // Length 11 (covers ~12.5 to 23.5). Center X = 18.
-        // Base 12 -> Scale X = 0.92.
+        // Extended to cover phone fully (Starts at X=10).
+        // Length 13.5 (covers 10 to 23.5). Center X = 16.75.
+        // Base 12 -> Scale X = 1.125.
         const blk2 = new window.App.RoomObjects.StripeBlanket();
-        blk2.mesh.scale.set(0.92, 1, 1);
-        blk2.mesh.position.set(18, 10.75, 0); 
+        blk2.mesh.scale.set(1.125, 1, 1);
+        blk2.mesh.position.set(16.75, 10.75, 0); 
+        // Base Width 12.
+        blk2.mesh.userData = { 
+            isBlanket: true, isOpen: false, 
+            baseWidth: 12, originalScaleX: 1.125, originalX: 16.75 
+        };
+        // Traverse to tag children for raycaster
+        blk2.mesh.traverse(c => { if(c.isMesh) c.userData = { isBlanket: true, parentBlanket: blk2.mesh }; });
         bed.group.add(blk2.mesh);
 
         // Pillows
@@ -132,6 +158,91 @@ window.App.Scenes.IntroScene = class IntroScene {
         yp2.group.traverse(c => { if(c.isMesh) c.userData = { isPillow: true, parentGroup: yp2.group }; });
         pillowGroup.add(yp2.group);
         this.pillows.push(yp2.group);
+
+        // --- SMART PHONE & WIRE (Under Yellow Blanket) ---
+        // Phone: iPhone Style (Black body, Screen Off)
+        // Multi-material: Top face (Index 2) is screen. Others are body.
+        const matBody = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.8 });
+        const matScreen = new THREE.MeshStandardMaterial({ 
+            color: 0x050505, 
+            emissive: 0x000000, 
+            emissiveIntensity: 0,
+            roughness: 0.1 
+        });
+        const materials = [
+            matBody, // +x
+            matBody, // -x
+            matScreen, // +y (Top)
+            matBody, // -y
+            matBody, // +z
+            matBody  // -z
+        ];
+
+        const phone = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.2, 5), materials);
+        
+        // Position: Under Head of Yellow Blanket (blk2, Foot of Bed).
+        // blk2 Head Edge ~ 12.5. 
+        // Position at X=13 (Just under edge).
+        // Side closer to Table (-Z direction). Z = -12.
+        // Y = 10.45 (Lowered slightly to avoid clipping Yellow Blanket 10.75, still above Pink 10.25).
+        phone.position.set(13, 10.45, -12); 
+        phone.rotation.y = -0.1; 
+        
+        phone.userData = { isPhone: true };
+        phone.traverse(c => { if(c.isMesh) c.userData = { isPhone: true, parentPhone: phone }; });
+
+        bed.group.add(phone);
+
+        // Wire: Black cable -> Bottom of Phone -> Wall Behind (Left of Mirrors)
+        // Calculated relative to bed.group position (World -15, -14, 0)
+        // Floor World Y = -20. Local Floor Y = -6.
+        // Wall World Z = -46. Local Z = -46.
+        // Target Plug World X = 5. Local X = 20.
+        
+        // Coiling logic for excess wire on floor
+        // Floor Y (Local) raised to -5.0 to safely clear floor
+        // Coiling logic for excess wire on floor
+        // Floor Y (Local) raised to -5.0 to safely clear floor
+        // Shifted ground loops left (X ~ 8) and extended Z clearance to -19
+        // Wire Start Y lowered to 10.45 to match phone and clear Yellow Blanket
+        const curve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(13, 10.45, -14.5),   // Bottom of Phone
+            new THREE.Vector3(13.0, 10.45, -19),   // Extend horizontally out FURHTER (Z=-19) to clear blanket spread
+            new THREE.Vector3(13.5, 0, -22),       // Dangle
+            new THREE.Vector3(13.5, -5.0, -26),    // Land on Floor
+            new THREE.Vector3(8, -5.0, -35),       // Approach Coil Area (Shifted Left to X=8)
+
+            // Loop 1 (Centered around X=8)
+            new THREE.Vector3(6.5, -5.0, -38),
+            new THREE.Vector3(8, -5.0, -36.5),
+            new THREE.Vector3(9.5, -5.0, -38),
+            new THREE.Vector3(8, -5.0, -39.5),
+            
+            // Loop 2
+            new THREE.Vector3(7, -5.0, -38),
+            new THREE.Vector3(8, -5.0, -37),
+            new THREE.Vector3(9, -5.0, -38),
+            new THREE.Vector3(8, -5.0, -39),
+
+            // Exit coil towards Plug
+            new THREE.Vector3(9, -4, -42),
+            new THREE.Vector3(10, 4, -44)          // Up to Wall Plug
+        ]);
+        
+        // Thicker wire (radius 0.15)
+        const wireGeo = new THREE.TubeGeometry(curve, 40, 0.15, 8, false);
+        const wireMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const wire = new THREE.Mesh(wireGeo, wireMat);
+        bed.group.add(wire);
+
+        // Plug Visual (Small Cylinder at Wall)
+        const plug = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8),
+            new THREE.MeshStandardMaterial({ color: 0x111111 })
+        );
+        plug.rotation.x = Math.PI / 2; 
+        plug.position.set(10, 4, -44); // Match wire end (World X=-5, Y=-10)
+        bed.group.add(plug);
 
         // --- HAMMER PROP (Attached to yp1) ---
         this.hammerProp = new THREE.Group();
@@ -177,10 +288,25 @@ window.App.Scenes.IntroScene = class IntroScene {
         table.group.position.set(-32, -20, -37); 
         this.group.add(table.group);
 
+        // Geometric Lamp on Side Table (Front)
+        const lamp = new window.App.RoomObjects.GeometricLamp();
+        lamp.group.position.set(-32, -6, -35); // Slight shift back from edge
+        lamp.group.scale.set(1.0, 1.0, 1.0);
+        lamp.group.rotation.y = -Math.PI / 2; // Face Left/Bed (Z+)
+        this.group.add(lamp.group);
+        this.geometricLamp = lamp; // Expose for SmartHome App
+
+        // Silver Bonsai on Side Table (Back, Moved Forward to Drawer Edge)
+        const bonsai = new window.App.RoomObjects.SilverBonsai();
+        bonsai.group.position.set(-27, -6, -41); // Moved X towards -25 (Drawers)
+        bonsai.group.rotation.y = Math.PI / 4; 
+        this.group.add(bonsai.group);
+
         // Bookshelf
         const shelf = new window.App.RoomObjects.Bookshelf();
         shelf.group.position.set(-32, -20, 39);
         this.group.add(shelf.group);
+        this.bookshelf = shelf; // Expose for SmartHome App
 
         // --- THE BOX (On Bed) ---
         // Use Actual CardboardBox class as a visual prop
@@ -190,8 +316,8 @@ window.App.Scenes.IntroScene = class IntroScene {
         
         const scale = 0.385; // 10/26 approx
         this.boxProp.scale.set(scale, scale, scale);
-        // Correct position to sit on bed (Visual check: bottom at roughly -4)
-        this.boxProp.position.set(-15, -1, 0); 
+        // Position underneath the left side of the bed (Z = 12)
+        this.boxProp.position.set(-15, -18, 12); 
         this.boxProp.rotation.set(0, 0, 0);
         
         // Tagging recursive for raycaster
@@ -203,6 +329,7 @@ window.App.Scenes.IntroScene = class IntroScene {
         // --- HEART BOX PROP (For when package is opened) ---
         // Use Actual HeartBox class as a visual prop (isProp = true)
         const hbInstance = new window.App.HeartBox(this.scene, true); // true = visual only
+        this.heartBoxPropInstance = hbInstance;
         this.heartBoxProp = hbInstance.group;
         this.heartBoxProp.scale.set(0.3, 0.3, 0.3); // Scale down
         
@@ -214,23 +341,50 @@ window.App.Scenes.IntroScene = class IntroScene {
         // Lying flat on bed means default rotation (x=0).
         // Adjust Y to sit on surface (Bed Y is roughly -14, plus mattress/blankets).
         // Original box was at Y=-1.
-        this.heartBoxProp.position.set(-15, -2, 0); 
+        // Lift slightly to avoid potential z-fighting with blankets
+        this.heartBoxProp.position.set(-15, -18.8, 12); 
         this.heartBoxProp.rotation.set(0, 0, 0);
 
         this.heartBoxProp.visible = false;
         
         // Floating animation anchor
-        this.boxAnchorY = -1;
+        this.boxAnchorY = -18;
     }
 
     updateProps() {
         if(window.App.isPackageOpened) {
             this.boxProp.visible = false;
             this.heartBoxProp.visible = true;
+            this.syncPropLocks();
         } else {
             this.boxProp.visible = true;
             this.heartBoxProp.visible = false;
         }
+    }
+
+    syncPropLocks() {
+        if(!this.heartBoxPropInstance || !this.heartBoxPropInstance.propLocks) return;
+        
+        const realLocks = window.App.state.locks;
+        if(!realLocks || realLocks.length === 0) return;
+
+        this.heartBoxPropInstance.propLocks.forEach(pLock => {
+            const real = realLocks.find(r => r.id === pLock.id);
+            if(real) {
+                if(real.solved) {
+                    pLock.container.scale.set(0,0,0);
+                    pLock.container.visible = false;
+                } else {
+                    pLock.container.scale.set(1,1,1);
+                    pLock.container.visible = true;
+                }
+            }
+        });
+    }
+
+    getCurrentPropRotation() {
+        const propRot = this.heartBoxProp.visible ? this.heartBoxProp.rotation.y : this.boxProp.rotation.y;
+        return this.group.rotation.y + propRot;
     }
 
     resetRotation() {
@@ -260,15 +414,25 @@ window.App.Scenes.IntroScene = class IntroScene {
 
         if(isReturning) {
             // Start State: Zoomed in on Box, Others Faded
-            const boxPos = { x: -15, y: -1, z: 0 };
+            const boxToFocus = (this.heartBoxProp.visible) ? this.heartBoxProp : this.boxProp; 
+            const boxPos = boxToFocus.position.clone();
             const startLookAt = { x: boxPos.x, y: boxPos.y, z: boxPos.z };
             const endLookAt = { x: 0, y: 0, z: 0 };
+
+            // Ensure room is centered (since we transition from Home View)
+            this.group.rotation.y = 0;
+            this.rotationIndex = 0;
 
             // Set initial state (Box visible, others invisible)
             this.setEnvironmentOpacity(0);
             
-            // Set Camera (Zoomed in on box)
-            this.camera.zoom = 2.0;
+            // Set Camera (Zoomed in on box) matching default relative scale
+            // Factor: Box (2.6), Heart (3.33)
+            let factor = 2.6;
+            if(window.App.isPackageOpened) factor = 3.33; 
+            
+            this.camera.zoom = factor; // Default zoom (since next scene resets to 1.0)
+
             // Fake the lookAt by tweening valid lookAt target
             
             // Because we can't easily force the camera matrix without controls,
@@ -352,7 +516,13 @@ window.App.Scenes.IntroScene = class IntroScene {
     exit() {
         this.isActive = false;
         
-        const boxPos = { x: -15, y: -1, z: 0 };
+        // RESET ROOM ROTATION TO CENTER (Home View)
+        this.resetRotation();
+
+        // Target stored box position
+        const targetObj = (this.heartBoxProp.visible) ? this.heartBoxProp : this.boxProp;
+        const boxPos = targetObj.position.clone();
+
         // Target Camera Position: maintain relative vector (-40, -40, -40) relative to target
         // Target is boxPos.
         // New Cam Pos = boxPos + (40, 40, 40)
@@ -378,6 +548,8 @@ window.App.Scenes.IntroScene = class IntroScene {
         // Calculate Target Zoom to match Size 1.0 in next scene
         // Box Scale 0.385 -> Zoom 2.6
         // Heart Scale 0.3 -> Zoom 3.33
+        // Reset to default scale match since next scene resets to 1.0
+        
         let targetZoom = 2.6;
         if(this.heartBoxProp.visible) targetZoom = 3.33;
 
@@ -453,6 +625,37 @@ window.App.Scenes.IntroScene = class IntroScene {
 
     onDrop(toolName, raycaster) {
         if(!this.isActive) return false;
+
+        if(toolName === 'box') {
+             // Check intersection with Bed, Blankets, or Pillows
+             const roomHits = raycaster.intersectObject(this.group, true);
+             let hitBed = false;
+             for(let hit of roomHits) {
+                 const d = hit.object.userData;
+                 if(d.isBedPart || d.isBlanket || d.isPillow) {
+                     hitBed = true;
+                     break;
+                 }
+             }
+             
+             if(hitBed) {
+                  // Place Box
+                  this.isBoxPlaced = true;
+                  this.boxAnchorY = -1.0; // Raised to sit on top of blankets
+                  
+                  // Position on bed surface (Centered)
+                  this.boxProp.position.set(-15, this.boxAnchorY, 0);
+                  this.heartBoxProp.position.set(-15, this.boxAnchorY, 0);
+                  
+                  this.boxProp.visible = true;
+                  
+                  // Remove from Inventory
+                  const t = document.getElementById('tool-box');
+                  if(t) t.remove();
+                  
+                  return true;
+             }
+        }
         
         if(toolName === 'hammer') {
             // Check collisions with Mirror Grid
@@ -495,7 +698,23 @@ window.App.Scenes.IntroScene = class IntroScene {
         if(this.heartBoxProp.visible) boxTarget = this.heartBoxProp;
         const boxHits = raycaster.intersectObject(boxTarget, true);
         if(boxHits.length > 0) {
-            if(this.onComplete) this.onComplete();
+            if (this.isBoxPlaced || window.App.isPackageOpened) {
+                if(this.onComplete) this.onComplete();
+            } else {
+                // Pick up into inventory
+                this.boxProp.visible = false;
+                const toolBox = document.getElementById('tool-box');
+                if(toolBox) toolBox.style.display = 'flex';
+                
+                // Toast
+                const toast = document.getElementById('toast');
+                const msg = document.getElementById('toast-msg');
+                if(toast && msg) {
+                    msg.textContent = "You picked up the package.";
+                    toast.classList.add('show');
+                    setTimeout(() => toast.classList.remove('show'), 3000);
+                }
+            }
             return true;
         }
 
@@ -505,6 +724,15 @@ window.App.Scenes.IntroScene = class IntroScene {
             // Find first valid interactable
             for(let hit of roomHits) {
                 const meta = hit.object.userData;
+
+                // LAMP TOGGLE
+                if(meta.isLamp || (meta.instance && meta.instance.constructor.name === 'GeometricLamp')) {
+                    const lamp = meta.instance;
+                    if(lamp && typeof lamp.toggle === 'function') {
+                        lamp.toggle();
+                        return true;
+                    }
+                }
                 
                 // BOX CUTTER PROP
                 if(meta.isCutterProp) {
@@ -580,9 +808,69 @@ window.App.Scenes.IntroScene = class IntroScene {
                     return true;
                 }
 
+                // PHONE PICKUP
+                if(meta.isPhone) {
+                    const phoneMesh = meta.parentPhone || hit.object;
+                    phoneMesh.visible = false;
+                    
+                    // Add to Inventory
+                    const toolPhone = document.getElementById('tool-phone');
+                    if(toolPhone) toolPhone.style.display = 'flex';
+                    
+                    // Show Toast
+                    const toast = document.getElementById('toast');
+                    const msg = document.getElementById('toast-msg');
+                    if(toast && msg) {
+                        msg.textContent = "You found your phone.";
+                        toast.classList.add('show');
+                        setTimeout(() => toast.classList.remove('show'), 3000);
+                    }
+                    return true;
+                }
+
+                // BLANKETS (Peel Back - Shrink/Compress)
+                if(meta.isBlanket) {
+                    if(meta.isFlowerBlanket) return false;
+                    const blanket = meta.parentBlanket || hit.object; 
+                    if(blanket.userData.isFlowerBlanket) return false;
+
+                    const open = !blanket.userData.isOpen;
+                    blanket.userData.isOpen = open;
+                    
+                    const dat = blanket.userData;
+                    
+                    // Calculate Foot Edge (Fixed Anchor)
+                    const footEdge = dat.originalX + (dat.baseWidth * dat.originalScaleX / 2);
+                    
+                    // Determine Target Scale
+                    // Adjusted to ensure Phone is visible (40% reduction to pull back significantly)
+                    const targetScaleX = open ? dat.originalScaleX * 0.6 : dat.originalScaleX;
+                    
+                    // Determine Target Position (Center) based on maintaining Foot Edge
+                    // FootEdge = Pos + (Width * Scale / 2) -> Pos = FootEdge - (Width * Scale / 2)
+                    const targetX = footEdge - (dat.baseWidth * targetScaleX / 2);
+
+                    // Animate Position
+                    window.TWEEN.to(blanket.position, {
+                        x: targetX,
+                        duration: 0.8,
+                        ease: "cubic.inOut"
+                    });
+                    
+                    // Animate Scale
+                    window.TWEEN.to(blanket.scale, {
+                        x: targetScaleX,
+                        duration: 0.8,
+                        ease: "cubic.inOut"
+                    });
+
+                    return true;
+                }
+
                 // DRAWERS
-                if(meta.isDrawer || (meta.parentDrawer && meta.parentDrawer.userData.isDrawer)) {
-                    const group = meta.parentDrawer || meta.parentGroup || hit.object; // ParentDrawer set in SideTable
+                // Modified: Only open if strict interaction target (Drawer Face) is clicked
+                if(meta.isDrawerFace && meta.parentDrawer) {
+                    const group = meta.parentDrawer; 
                     if(group && group.userData.isDrawer) {
                         const open = !group.userData.isOpen;
                         group.userData.isOpen = open;
@@ -628,17 +916,14 @@ window.App.Scenes.IntroScene = class IntroScene {
     update(time) {
         if(!this.isActive) return;
         
-        // Gentle hover only when active
-        const offset = Math.sin(time * 2) * 0.5;
-        const rot = Math.sin(time) * 0.1;
+        // Removed rotation animation (swivel) as requested
+        // Removed vertical bobbing effect
 
         if(this.boxProp.visible) {
-            this.boxProp.position.y = this.boxAnchorY + offset;
-            this.boxProp.rotation.y = rot;
+            this.boxProp.position.y = this.boxAnchorY;
         }
         if(this.heartBoxProp.visible) {
-            this.heartBoxProp.position.y = this.boxAnchorY + offset;
-            this.heartBoxProp.rotation.y = rot;
+            this.heartBoxProp.position.y = this.boxAnchorY;
         }
     }
 };
