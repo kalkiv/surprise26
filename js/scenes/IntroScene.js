@@ -61,9 +61,9 @@ window.App.Scenes.IntroScene = class IntroScene {
         this.brokenMirrors = 0;
 
         // Flower Grid
-        const flowerGrid = new window.App.RoomObjects.FlowerGrid();
-        flowerGrid.group.position.set(-20, 10, -roomLength/2 + 0.4); 
-        this.group.add(flowerGrid.group);
+        this.flowerGrid = new window.App.RoomObjects.FlowerGrid();
+        this.flowerGrid.group.position.set(-20, 10, -roomLength/2 + 0.4); 
+        this.group.add(this.flowerGrid.group);
 
         // Painting (Lowered slightly)
         // Scale 1.35. Y=30.
@@ -179,6 +179,7 @@ window.App.Scenes.IntroScene = class IntroScene {
         ];
 
         const phone = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.2, 5), materials);
+        this.phoneMesh = phone; // Store reference
         
         // Position: Under Head of Yellow Blanket (blk2, Foot of Bed).
         // blk2 Head Edge ~ 12.5. 
@@ -192,6 +193,68 @@ window.App.Scenes.IntroScene = class IntroScene {
         phone.traverse(c => { if(c.isMesh) c.userData = { isPhone: true, parentPhone: phone }; });
 
         bed.group.add(phone);
+
+        // --- PHONE RING TEXT ANIMATION ---
+        this.buzzGroup = new THREE.Group();
+        // Raised to 14 to ensuring it starts clearly above blanket (avoid clipping)
+        this.buzzGroup.position.set(13, 14, -12); 
+
+        // Create "RING!" Texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; 
+        canvas.height = 128; 
+        const ctx = canvas.getContext('2d');
+        // Transparent BG
+        ctx.clearRect(0,0,256,128);
+        
+        // Text
+        ctx.font = 'bold 80px "Comic Sans MS", "Verdana", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Offset for 2 versions? No, just generate one.
+        const textStr = "RING!";
+        
+        // Thick Outline
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 8;
+        ctx.strokeText(textStr, 128, 64);
+        
+        // Fill
+        ctx.fillStyle = 'white';
+        ctx.fillText(textStr, 128, 64);
+        
+        const ringTex = new THREE.CanvasTexture(canvas);
+        // alphaTest: 0.5 ensures correct depth sorting (fixes "showing through" issues)
+        const ringMat = new THREE.SpriteMaterial({ map: ringTex, transparent: true, alphaTest: 0.5, opacity: 0 });
+
+        this.ringEffects = [];
+        
+        // "Two at a time every other second" -> Burst of 2, then pause.
+        // Cycle Length 4.0s.
+        // Sprite 1: Start 0.0s.
+        // Sprite 2: Start 0.6s.
+        // Animation Duration: ~2.0s per sprite.
+        // Result: 0-2.6s Activity, 2.6-4.0s Silence.
+        
+        for(let i=0; i<2; i++) {
+             const sprite = new THREE.Sprite(ringMat.clone());
+             sprite.scale.set(4, 2, 1); // Base size
+             sprite.visible = false;
+             // Staggered properties
+             sprite.userData = {
+                 timer: -i * 0.6, // Tighter stagger for "two at a time"
+                 cycle: 4.0,      // Slower cycle for "every other second" feel
+                 baseScale: 1.0,
+                 rotOffset: (Math.random() - 0.5) * 0.5 
+             };
+             // Randomize rotation a bit
+             sprite.material.rotation = sprite.userData.rotOffset;
+             
+             this.buzzGroup.add(sprite);
+             this.ringEffects.push(sprite);
+        }
+        bed.group.add(this.buzzGroup);
 
         // Wire: Black cable -> Bottom of Phone -> Wall Behind (Left of Mirrors)
         // Calculated relative to bed.group position (World -15, -14, 0)
@@ -284,9 +347,9 @@ window.App.Scenes.IntroScene = class IntroScene {
         this.pillows.push(hp.group);
 
         // Side Table
-        const table = new window.App.RoomObjects.SideTable();
-        table.group.position.set(-32, -20, -37); 
-        this.group.add(table.group);
+        this.sideTable = new window.App.RoomObjects.SideTable();
+        this.sideTable.group.position.set(-32, -20, -37); 
+        this.group.add(this.sideTable.group);
 
         // Geometric Lamp on Side Table (Front)
         const lamp = new window.App.RoomObjects.GeometricLamp();
@@ -307,6 +370,86 @@ window.App.Scenes.IntroScene = class IntroScene {
         shelf.group.position.set(-32, -20, 39);
         this.group.add(shelf.group);
         this.bookshelf = shelf; // Expose for SmartHome App
+
+        // --- ROOM POLAROIDS (New) ---
+        // 1. On top of Bookshelf
+        const p1 = window.App.GalleryInstance.createPolaroidMesh();
+        const t1 = window.App.GalleryInstance.getTexture(5);
+        if(p1.userData.photoMesh) {
+            p1.userData.photoMesh.material.map = t1;
+            p1.userData.photoMesh.material.needsUpdate = true;
+            p1.userData.photoMesh.material.color.setHex(0xffffff);
+        }
+        p1.position.set(0, 45, 4); 
+        p1.rotation.x = -Math.PI / 2 + 0.2; // Leaning back slightly
+        p1.rotation.z = -0.1;
+        p1.userData = { isPhoto: true, meshGroup: p1 };
+        p1.traverse(c => { if(c.isMesh) c.userData = { isPhoto: true, meshGroup: p1 }; });
+        shelf.group.add(p1);
+
+        // 2. On top of Side Table
+        const p2 = window.App.GalleryInstance.createPolaroidMesh();
+        const t2 = window.App.GalleryInstance.getTexture(6);
+        if(p2.userData.photoMesh) {
+            p2.userData.photoMesh.material.map = t2;
+            p2.userData.photoMesh.material.needsUpdate = true;
+            p2.userData.photoMesh.material.color.setHex(0xffffff);
+        }
+        p2.position.set(2, 14.1, 4); // Slightly offset
+        p2.rotation.x = -Math.PI / 2; 
+        p2.rotation.z = Math.PI / 6; // Angled
+        p2.userData = { isPhoto: true, meshGroup: p2 };
+        p2.traverse(c => { if(c.isMesh) c.userData = { isPhoto: true, meshGroup: p2 }; });
+        this.sideTable.group.add(p2);
+
+        // 3. Mirror Grid (Top Left Corner sticking out)
+        const p3 = window.App.GalleryInstance.createPolaroidMesh();
+        const t3 = window.App.GalleryInstance.getTexture(7);
+        if(p3.userData.photoMesh) {
+            p3.userData.photoMesh.material.map = t3;
+            p3.userData.photoMesh.material.needsUpdate = true;
+            p3.userData.photoMesh.material.color.setHex(0xffffff);
+        }
+        // Top Left Mirror is at Local (-12, 9). Top Left Corner of it is (-18, 18).
+        // Place it wedged there.
+        p3.position.set(-17, 17, 1.5); 
+        p3.rotation.x = -Math.PI / 2 + 0.5; // Tilted down
+        p3.rotation.z = -Math.PI / 4; // Angled corner
+        p3.userData = { isPhoto: true, meshGroup: p3 };
+        p3.traverse(c => { if(c.isMesh) c.userData = { isPhoto: true, meshGroup: p3 }; });
+        this.mirrorGrid.group.add(p3);
+
+        // 4. On Bed Headrest
+        const p4 = window.App.GalleryInstance.createPolaroidMesh();
+        const t4 = window.App.GalleryInstance.getTexture(8);
+        if(p4.userData.photoMesh) {
+            p4.userData.photoMesh.material.map = t4;
+            p4.userData.photoMesh.material.needsUpdate = true;
+            p4.userData.photoMesh.material.color.setHex(0xffffff);
+        }
+        // Headboard top is at local x=-24, y=19 (height 20).
+        // Place standing on top, facing foot of bed (X+)
+        p4.position.set(-24, 21.5, -8); 
+        p4.rotation.set(0, Math.PI / 2, -0.15); // Face X+, tilt back slightly (Z-)
+        p4.userData = { isPhoto: true, meshGroup: p4 };
+        p4.traverse(c => { if(c.isMesh) c.userData = { isPhoto: true, meshGroup: p4 }; });
+        bed.group.add(p4);
+
+        // 5. Underneath Foot of Bed
+        const p5 = window.App.GalleryInstance.createPolaroidMesh();
+        const t5 = window.App.GalleryInstance.getTexture(9);
+        if(p5.userData.photoMesh) {
+            p5.userData.photoMesh.material.map = t5;
+            p5.userData.photoMesh.material.needsUpdate = true;
+            p5.userData.photoMesh.material.color.setHex(0xffffff);
+        }
+        // Foot of bed is at X=+25 (Local). Floor level relative to bed group (Y=-14) is Y=-6.
+        // Place slightly inwards (X=20) and on floor (Y=-5.9).
+        p5.position.set(20, -5.9, 8); 
+        p5.rotation.set(-Math.PI / 2, 0, 0.5); // Flat on floor, skewed
+        p5.userData = { isPhoto: true, meshGroup: p5 };
+        p5.traverse(c => { if(c.isMesh) c.userData = { isPhoto: true, meshGroup: p5 }; });
+        bed.group.add(p5);
 
         // --- THE BOX (On Bed) ---
         // Use Actual CardboardBox class as a visual prop
@@ -714,6 +857,12 @@ window.App.Scenes.IntroScene = class IntroScene {
                     toast.classList.add('show');
                     setTimeout(() => toast.classList.remove('show'), 3000);
                 }
+
+                if (window.App.Phone && window.App.Phone.receiveMessage) {
+                    setTimeout(() => {
+                        window.App.Phone.receiveMessage("Now put the box on the bed and figure out how to open it!");
+                    }, 500);
+                }
             }
             return true;
         }
@@ -732,6 +881,30 @@ window.App.Scenes.IntroScene = class IntroScene {
                         lamp.toggle();
                         return true;
                     }
+                }
+
+                // FLOWER GRID
+                if(meta.isFlower) {
+                    const target = meta.parentGroup || hit.object; 
+                    if(this.flowerGrid) {
+                        // Use rotate instead of toggle
+                        this.flowerGrid.rotate(target);
+                        if(this.flowerGrid.checkPattern()) {
+                            // Delay unlock slightly to wait for animation? optional
+                            if(this.sideTable) {
+                                this.sideTable.unlockBottomDrawer();
+                                // Feedback
+                                const toast = document.getElementById('toast');
+                                const msg = document.getElementById('toast-msg');
+                                if(toast && msg) {
+                                    msg.textContent = "You hear a click from the side table.";
+                                    toast.classList.add('show');
+                                    setTimeout(() => toast.classList.remove('show'), 3000);
+                                }
+                            }
+                        }
+                    }
+                    return true;
                 }
                 
                 // BOX CUTTER PROP
@@ -808,6 +981,12 @@ window.App.Scenes.IntroScene = class IntroScene {
                     return true;
                 }
 
+                // POLAROID PICKUP
+                if(meta.isPhoto) {
+                    // Let Main.js handle collection logic (shared)
+                    return { type: 'polaroid', target: hit.object };
+                }
+
                 // PHONE PICKUP
                 if(meta.isPhone) {
                     const phoneMesh = meta.parentPhone || hit.object;
@@ -872,12 +1051,67 @@ window.App.Scenes.IntroScene = class IntroScene {
                 if(meta.isDrawerFace && meta.parentDrawer) {
                     const group = meta.parentDrawer; 
                     if(group && group.userData.isDrawer) {
+                         // CHECK LOCKED
+                         if(group.userData.locked) {
+                            // Locked feedback
+                            const toast = document.getElementById('toast');
+                            const msg = document.getElementById('toast-msg');
+                            if(toast && msg) {
+                                msg.textContent = "It's locked.";
+                                toast.classList.add('show');
+                                setTimeout(() => toast.classList.remove('show'), 2000);
+                            }
+                            
+                            // Jiggle Animation (X-axis rapidly back and forth)
+                            const startX = group.userData.originalX;
+                            // Jiggle: Out slightly (+X), then In (-X), then center.
+                            // fast sequence
+                            const original = { x: startX };
+                            
+                            // Prevent multiple jiggles stacking
+                            if(!group.userData.isJiggling) {
+                                group.userData.isJiggling = true;
+                                
+                                new window.TWEEN.Tween(group.position)
+                                    .to({ x: startX + 0.3 }, 50)
+                                    .easing(TWEEN.Easing.Quadratic.Out)
+                                    .chain(
+                                        new window.TWEEN.Tween(group.position)
+                                            .to({ x: startX - 0.1 }, 50)
+                                            .chain(
+                                                new window.TWEEN.Tween(group.position)
+                                                    .to({ x: startX + 0.1 }, 50)
+                                                    .chain(
+                                                        new window.TWEEN.Tween(group.position)
+                                                            .to({ x: startX }, 50)
+                                                            .onComplete(() => { group.userData.isJiggling = false; })
+                                                    )
+                                            )
+                                    )
+                                    .start();
+                            }
+                            
+                            return true;
+                        }
+
                         const open = !group.userData.isOpen;
                         group.userData.isOpen = open;
                         const originalX = group.userData.originalX;
                         // Slide along Local X
                         const targetX = open ? originalX + 8 : originalX;
                         window.TWEEN.to(group.position, { x: targetX, duration: 0.5, ease: "cubic.out" });
+                        return true;
+                    }
+                }
+
+                // WORLD TOUR PAPER (Top Drawer)
+                if(meta.isWorldTourPaper) {
+                    // Only interact if drawer is open? Or if visible. Raycaster handles visibility roughly but let's be safe.
+                    const drawer = meta.parentDrawer;
+                    if(drawer && drawer.userData.isOpen) {
+                        // Show Paper Modal
+                        const modal = document.getElementById('paper-modal');
+                        if(modal) modal.classList.add('active');
                         return true;
                     }
                 }
@@ -924,6 +1158,45 @@ window.App.Scenes.IntroScene = class IntroScene {
         }
         if(this.heartBoxProp.visible) {
             this.heartBoxProp.position.y = this.boxAnchorY;
+        }
+
+        // Update Buzz Animation
+        if(this.phoneMesh && this.phoneMesh.visible && this.ringEffects) {
+            this.buzzGroup.visible = true;
+            this.ringEffects.forEach((sq, idx) => {
+                 sq.userData.timer += 0.016; 
+                 const t = sq.userData.timer;
+                 
+                 if(t < 0) return; 
+                 
+                 const cycleT = t % sq.userData.cycle;
+                 const progress = cycleT / sq.userData.cycle; // 0 to 1
+                 
+                 sq.visible = true;
+                 
+                 // Animation: Pop Up
+                 // Move Up: 0 to 3.0
+                 sq.position.y = progress * 3.0;
+                 
+                 // Scale: Pop (0.5 -> 1.2 -> 1.0)
+                 let s = 1.0;
+                 if(progress < 0.1) s = 0.5 + (progress/0.1) * 0.7; // 0.5 to 1.2
+                 else if(progress < 0.3) s = 1.2 - ((progress-0.1)/0.2) * 0.2; // 1.2 to 1.0
+                 else s = 1.0; // Stay
+                 
+                 sq.scale.set(4 * s, 2 * s, 1);
+
+                 // Jiggle Rotation
+                 sq.material.rotation = sq.userData.rotOffset + Math.sin(time * 15) * 0.1;
+                 
+                 // Opacity
+                 if(progress < 0.1) sq.material.opacity = progress * 10;
+                 else if(progress > 0.7) sq.material.opacity = (1 - progress) * 3.33;
+                 else sq.material.opacity = 1.0;
+                 
+            });
+        } else if(this.buzzGroup) {
+            this.buzzGroup.visible = false;
         }
     }
 };

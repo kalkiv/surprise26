@@ -5,7 +5,7 @@ window.App.HeartBox = class {
     constructor(scene, isProp = false) {
         this.scene = scene;
         this.group = new THREE.Group();
-        this.scene.add(this.group);
+        // this.scene.add(this.group); // Removed auto-add to prevent duplicates/orphan instances
         
         this.group.rotation.y = 0;
         
@@ -65,8 +65,11 @@ window.App.HeartBox = class {
         this.polaroidGroup.rotation.x = -Math.PI / 2;
         this.polaroidGroup.rotation.z = Math.PI / 8; // Bit of angle
         this.group.add(this.polaroidGroup);
+        
+        this.polaroids = [];
 
-        for(let i=0; i<3; i++) {
+        // 5 photos
+        for(let i=0; i<5; i++) {
             const meshGroup = window.App.GalleryInstance.createPolaroidMesh();
             
             // Assign Texture to Stack Item
@@ -86,21 +89,55 @@ window.App.HeartBox = class {
             meshGroup.rotation.z = rZ;
             
             // Make interactable
+            meshGroup.translateZ(0); // Ensure creation
+            
+            // Store reference on the group container (meshGroup)
+            // MARK AS STACK, but don't rely only on mesh click logic
+            meshGroup.userData = { 
+                isPolaroidStack: true, 
+                parentStack: this.polaroidGroup,
+                galleryIndex: i,
+                isPhoto: true // Specific Tag
+            };
+
+            // Set Check on Children meshes too for Raycasting
             meshGroup.traverse(c => {
                 if(c.isMesh) {
                     c.userData = { 
                         isPolaroidStack: true, 
-                        parentStack: this.polaroidGroup,
-                        galleryIndex: i // Just for variety
+                        parentStack: this.polaroidGroup, 
+                        meshGroup: meshGroup, 
+                        galleryIndex: i,
+                        isPhoto: true
                     };
                 }
             });
             
             this.polaroidGroup.add(meshGroup);
+            this.polaroids.push(meshGroup);
         }
         
         // Store for Main.js access if needed
         this.polaroidStack = this.polaroidGroup;
+    }
+
+    claimNextPolaroid() {
+        if(!this.polaroids) return;
+        
+        // Find top-most visible photo (Highest Index created last)
+        // Array is [0, 1, 2, 3, 4] -> 4 is top.
+        for(let i = this.polaroids.length - 1; i >= 0; i--) {
+            if(this.polaroids[i].visible) {
+                 this.polaroids[i].visible = false;
+                 
+                 // If that was the last one (index 0), hide the group?
+                 if(i === 0) {
+                     this.polaroidGroup.visible = false;
+                 }
+                 return true; // Claimed successfully
+            }
+        }
+        return false; // None left
     }
 
     createCard() {
@@ -387,21 +424,29 @@ window.App.HeartBox = class {
     }
     
     animateOpen() {
-         // Separate the Lid - STRAIGHT UP
-         window.TWEEN.to(this.lidGroup.position, { y: this.lidGroup.position.y + 12, duration: 3.0, ease: "cubic.out" });
+         // Separate the Lid - STRAIGHT UP and DISAPPEAR
+         window.TWEEN.to(this.lidGroup.position, { 
+             y: this.lidGroup.position.y + 12, 
+             duration: 3.0, 
+             ease: "cubic.out",
+             onComplete: () => { this.lidGroup.visible = false; }
+         });
          
-         // Also move Digit Lock (since it's physically on the lid)
+         // Scale down lid to vanish
+         window.TWEEN.to(this.lidGroup.scale, { x: 0.01, y: 0.01, z: 0.01, duration: 2.5, delay: 0.5, ease: "expo.in" });
+
+         // Also move/hide Digit Lock (since it's physically on the lid)
          const digitLock = window.App.state.locks.find(l => l.type === 'digit');
          if(digitLock) {
              window.TWEEN.to(digitLock.container.position, { 
                  y: digitLock.container.position.y + 12, 
                  duration: 3.0, 
-                 ease: "cubic.out" 
+                 ease: "cubic.out",
+                 onComplete: () => { digitLock.container.visible = false; }
              });
+             window.TWEEN.to(digitLock.container.scale, { x: 0.01, y: 0.01, z: 0.01, duration: 2.5, delay: 0.5, ease: "expo.in" });
          }
 
-         // No rotation - opens directly up
-         
          // Light Up
          window.TWEEN.to(this.innerLight, { intensity: 8, duration: 1.5, ease: "linear" });
          

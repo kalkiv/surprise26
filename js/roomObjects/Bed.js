@@ -18,7 +18,7 @@ window.App.RoomObjects.Bed = class Bed {
         const woodMat = new THREE.MeshStandardMaterial({ color: 0x090909, roughness: 0.6 });
         
         // Mattress Tex
-        const mattressTex = window.App.Utils.TextureFactory.createFlowerPattern('#FFFFFF', '#00008B');
+        const mattressTex = window.App.Utils.TextureFactory.createFlowerPattern('#FFFFFF', '#00008B', 73819);
         const bedMat = new THREE.MeshStandardMaterial({ map: mattressTex, roughness: 0.9 });
         
         // Legs (Local -2 to -6 relative to Group 0?)

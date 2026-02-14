@@ -142,12 +142,54 @@ window.App.RoomObjects.SideTable = class SideTable {
         this.topDrawerGroup = createDrawer();
         this.topDrawerGroup.position.set(7.5, 10, 0);
         this.topDrawerGroup.userData = { isDrawer: true, isOpen: false, originalX: 7.5 }; 
+        
+        // Add "World Tour Plans" Paper to Top Drawer
+        // Create Scribble Texture
+        const pCanvas = document.createElement('canvas');
+        pCanvas.width = 256; pCanvas.height = 350;
+        const ctx = pCanvas.getContext('2d');
+        ctx.fillStyle = '#111111'; // Black paper
+        ctx.fillRect(0, 0, 256, 350);
+        ctx.strokeStyle = '#eeeeee'; // White scribbles
+        ctx.lineWidth = 3;
+        // Title Scribble
+        ctx.beginPath();
+        ctx.moveTo(40, 40); ctx.lineTo(216, 40);
+        ctx.moveTo(40, 55); ctx.lineTo(180, 55);
+        ctx.stroke();
+        // Body Scribbles
+        ctx.lineWidth = 2;
+        for(let i=90; i<300; i+=25) {
+            ctx.beginPath();
+            ctx.moveTo(30, i);
+            ctx.bezierCurveTo(80, i-5, 170, i+5, 226, i);
+            ctx.stroke();
+        }
+        const pTex = new THREE.CanvasTexture(pCanvas);
+
+        const paperGeo = new THREE.PlaneGeometry(5, 7);
+        const paperMat = new THREE.MeshStandardMaterial({ 
+            map: pTex, 
+            roughness: 0.6,
+            side: THREE.DoubleSide
+        });
+        const paper = new THREE.Mesh(paperGeo, paperMat);
+        
+        // Position inside drawer:
+        // Base is at Y=-2.0 with height 0.5 -> Top surface is at -1.75.
+        // Paper needs to be above -1.75.
+        paper.rotation.x = -Math.PI / 2;
+        paper.rotation.z = 0.1; 
+        paper.position.set(-6.0, -1.6, 0); // Lifted to -1.6 to sit clearly on top
+        paper.userData = { isWorldTourPaper: true, parentDrawer: this.topDrawerGroup };
+        this.topDrawerGroup.add(paper);
+
         this.group.add(this.topDrawerGroup);
         
         // Bottom Drawer Group
         this.botDrawerGroup = createDrawer();
         this.botDrawerGroup.position.set(7.5, 4, 0);
-        this.botDrawerGroup.userData = { isDrawer: true, isOpen: false, originalX: 7.5 };
+        this.botDrawerGroup.userData = { isDrawer: true, isOpen: false, originalX: 7.5, locked: true };
         
         // --- BOX CUTTER PROP ---
         const cutter = new THREE.Group();
@@ -215,5 +257,13 @@ window.App.RoomObjects.SideTable = class SideTable {
         this.botDrawerGroup.add(cutter);
 
         this.group.add(this.botDrawerGroup);
+    }
+
+    unlockBottomDrawer() {
+        if(this.botDrawerGroup && this.botDrawerGroup.userData) {
+            this.botDrawerGroup.userData.locked = false;
+            // Optional: Visual cue (e.g. knob color change or small shake)
+            // Just unlocking is sufficient as per request.
+        }
     }
 };

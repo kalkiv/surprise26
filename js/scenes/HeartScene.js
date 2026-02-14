@@ -113,7 +113,7 @@ window.App.Scenes.HeartScene = class HeartScene {
             const data = hitObj.userData;
             
             if(data.isPolaroidStack) {
-                return { type: 'polaroid', index: data.galleryIndex };
+                return { type: 'polaroid', index: data.galleryIndex, target: hitObj };
             }
             if(data.isNote) {
                 return { type: 'note', target: hitObj };

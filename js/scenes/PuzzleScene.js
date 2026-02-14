@@ -8,6 +8,7 @@ window.App.Scenes.PuzzleScene = class PuzzleScene {
         this.isActive = false;
         
         this.heartBox = new window.App.HeartBox(scene);
+        this.scene.add(this.heartBox.group); // Manually add to scene
         this.heartBox.group.visible = false; // Start hidden
         
         // Puzzle Logic Bindings
@@ -147,7 +148,7 @@ window.App.Scenes.PuzzleScene = class PuzzleScene {
             
             // Check Polaroid Stack (Return special signal or handle)
             if(hitObj.userData.isPolaroidStack) {
-                return { type: 'polaroid', index: data.galleryIndex };
+                return { type: 'polaroid', index: data.galleryIndex, target: hitObj };
             }
             
             // Check Note
@@ -180,6 +181,12 @@ window.App.Scenes.PuzzleScene = class PuzzleScene {
             return true;
         } 
         
+        // If Digit Lock Zoomed and clicked OUTSIDE of interaction targets (e.g. background)
+        if(isDigitZoomed) {
+            zoomOutCb();
+            return true;
+        }
+
         return false;
     }
     

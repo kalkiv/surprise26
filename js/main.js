@@ -342,8 +342,9 @@ window.addEventListener('load', () => {
         isDigitZoomed = true;
         activeDigitLock = lockInstance;
         if(activeDigitLock) activeDigitLock.selectSlot(0);
+        // User Requested Nav Bar to remaining visible
         const boxControls = document.getElementById('box-controls');
-        if(boxControls) boxControls.style.display = 'none';
+        if(boxControls) boxControls.style.display = 'flex';
         
         if(boxRotTween) boxRotTween.stop(); 
         if(boxFlipTween) boxFlipTween.stop(); 
@@ -450,6 +451,12 @@ window.addEventListener('load', () => {
 
     function homeView() {
         if(window.App.state.isBoxOpen) return;
+
+        // If currently zoomed into digit lock, treat Home as Exit Zoom
+        if(isDigitZoomed) {
+            zoomOutFromDigitLock();
+            return;
+        }
         
         // Scene Delegation
         if(activeScene === introScene) {
@@ -587,9 +594,10 @@ window.addEventListener('load', () => {
 
             if(typeof result === 'object') {
                 if(result.type === 'polaroid') {
-                     collectPhotos();
+                     collectPhotos(result.target);
                 } else if(result.type === 'note') {
-                     openCard(result.target);
+                     // openCard(result.target); // Removed zoom animation
+                     document.getElementById('card-modal').classList.add('active'); // Open Modal instead
                 }
             }
         }
@@ -790,19 +798,46 @@ window.addEventListener('load', () => {
     }
     
     // collectPhotos function
-    function collectPhotos() {
+    function collectPhotos(hitObj) {
+        let handled = false;
+        
+        // Try Central Manager First (HeartBox Stack)
+        // Only delegate if the clicked object is ACTUALLY part of the managed stack
+        if (hitObj && hitObj.userData.isPolaroidStack) {
+             const hb = window.App.Scenes.puzzleSceneInstance ? window.App.Scenes.puzzleSceneInstance.heartBox : null;
+             if (hb && typeof hb.claimNextPolaroid === 'function') {
+                 // Claim the next valid photo from the managed stack
+                 const claimed = hb.claimNextPolaroid();
+                 if (claimed) {
+                     handled = true;
+                 } else {
+                     // Stack is empty
+                     return; 
+                 }
+             }
+        }
+
+        // Fallback: If not handled by HeartBox manager (e.g. random photo elsewhere), do old logic
+        if (!handled && hitObj) {
+            if(hitObj.userData.meshGroup) {
+                hitObj.userData.meshGroup.visible = false;
+            } else {
+                hitObj.visible = false;
+            }
+        }
+
         if(window.App.state.photosCollected >= 10) {
              window.App.UIManager.showToast("You have found all photos!");
              return;
         }
 
-        const grant = 3;
+        const grant = 1; // 1 photo per click
         window.App.state.photosCollected = Math.min(10, window.App.state.photosCollected + grant);
         
         const photoCounter = document.getElementById('photo-counter');
         if(photoCounter) photoCounter.textContent = `${window.App.state.photosCollected}/10`;
         
-        window.App.UIManager.showToast(`Found ${grant} Photos! Check your phone.`);
+        window.App.UIManager.showToast(`Found a Photo! Check your phone.`);
     }
 
     animate();

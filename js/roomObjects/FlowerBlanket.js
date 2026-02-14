@@ -8,7 +8,7 @@ window.App.RoomObjects.FlowerBlanket = class FlowerBlanket {
     }
 
     init() {
-        const blanket1Tex = window.App.Utils.TextureFactory.createFlowerPattern('#FFFFFF', '#FF69B4'); // White base, Pink flowers
+        const blanket1Tex = window.App.Utils.TextureFactory.createFlowerPattern('#FFFFFF', '#FF69B4', 73819); // White base, Pink flowers, fixed seed
         const blanket1Mat = new THREE.MeshStandardMaterial({ map: blanket1Tex, roughness: 0.9 });
         
         this.mesh = new THREE.Group();

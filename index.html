@@ -22,8 +22,8 @@
         <!-- Header Removed -->
 
         <div class="inventory-panel">
-            <div class="inv-title" style="font-size: 1.5rem;">Keys Collected: <span id="key-counter">0/0</span></div>
-            <div class="inv-title" style="font-size: 1.2rem; margin-top: 5px;">Photos: <span id="photo-counter">0/10</span></div>
+            <div class="inv-title">Keys Collected: <span id="key-counter">0/0</span></div>
+            <div class="inv-title">Photos: <span id="photo-counter">0/10</span></div>
         </div>
         
         <!-- Tools Panel -->
@@ -159,6 +159,38 @@
         </div>
     </div>
     
+    <!-- Paper Modal -->
+    <div class="modal-overlay" id="paper-modal">
+        <div class="modal-card paper-style" style="background: #fdfbf7; color: #333; font-family: 'Courier New', monospace; text-align: left; padding: 3rem; transform: rotate(1deg); box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <h2 style="text-align: center; text-decoration: underline; margin-bottom: 2rem; color: #333;">WORLD TOUR PLANS</h2>
+            <div style="font-size: 1.1rem; line-height: 2rem;">
+                <p><strong>STEP 1:</strong> PLAN THE WORLD TOUR</p>
+                <p><strong>STEP 2:</strong> PICK A FLOWER AT EACH DESTINATION</p>
+                <p><strong>STEP 3:</strong> SUCCESS UNLOCKED!</p>
+            </div>
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="btn btn-primary" onclick="document.getElementById('paper-modal').classList.remove('active')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Modal -->
+    <div class="modal-overlay" id="card-modal">
+        <div class="modal-card" style="background: #fff0f5; color: #880e4f; text-align: center; padding: 2.5rem; border: 3px solid #f8bbd0; border-radius: 15px; box-shadow: 0 10px 25px rgba(233, 30, 99, 0.2); max-width: 500px;">
+            <h2 style="font-family: 'Brush Script MT', cursive; font-size: 3rem; margin-bottom: 1.5rem; color: #d81b60;">To My Love</h2>
+            <div style="font-family: 'Georgia', serif; font-size: 1.2rem; line-height: 1.8; color: #4a1428;">
+                <p>Happy Valentine's Day!</p>
+                <p>You have unlocked my heart.</p>
+                <p>Every moment with you is a treasure.</p>
+                <p>Here's to many more adventures together.</p>
+                <p style="font-size: 2rem; margin-top: 1rem;">❤️</p>
+            </div>
+            <div style="margin-top: 2rem;">
+                <button class="btn btn-primary" style="background: #e91e63; border-color: #c2185b;" onclick="document.getElementById('card-modal').classList.remove('active')">Close Card</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Phone Modal -->
     <div class="modal-overlay" id="phone-modal">
         <div class="phone-screen-container">
@@ -168,6 +200,15 @@
                      <div class="phone-status-bar">
                         <span id="phone-clock-small">12:00</span>
                         <span>📶 🔋</span>
+                     </div>
+                     
+                     <!-- Notification Banner -->
+                     <div id="phone-notification-banner" class="notification-banner">
+                         <div class="notif-icon">💬</div>
+                         <div class="notif-content">
+                             <div class="notif-title">Messages</div>
+                             <div class="notif-text" id="notif-text-content">New Message</div>
+                         </div>
                      </div>
 
                      <!-- Home Screen -->
@@ -179,7 +220,10 @@
                                  <span>Phone</span>
                              </div>
                              <div class="app-item" onclick="window.App.Phone.openApp('messages')">
-                                 <div class="app-icon" style="background:#34c759">💬</div>
+                                 <div class="app-icon" style="background:#34c759; position: relative;">
+                                     💬
+                                     <span id="msg-badge" style="position: absolute; top: -5px; right: -5px; font-size: 1rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); display: none;">🔴</span>
+                                 </div>
                                  <span>Messages</span>
                              </div>
                              <div class="app-item" onclick="window.App.Phone.openApp('internet')">
@@ -383,6 +427,7 @@
     <script src="js/phone/Phone.js"></script>
     <script src="js/phone/apps/PhotosApp.js"></script>
     <script src="js/phone/apps/SmartHomeApp.js"></script>
+    <script src="js/phone/apps/MapsApp.js"></script>
 
     <!-- Components -->
     <script src="js/locks/HeartLock.js"></script>

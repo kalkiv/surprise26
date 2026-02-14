@@ -10,7 +10,7 @@ window.App.RoomObjects.Carpet = class Carpet {
     init() {
         // Fainter pink than #FF69B4 (HotPink). Using #FFC0CB (Pink) which is much lighter.
         // Or could go for #FFB6C1 (LightPink).
-        const texture = window.App.Utils.TextureFactory.createFlowerPattern('#FFFFFF', '#FFC0CB'); 
+        const texture = window.App.Utils.TextureFactory.createFlowerPattern('#FFFFFF', '#FFC0CB', 73819); 
         
         const mat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
         

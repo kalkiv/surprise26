@@ -2,7 +2,13 @@ window.App = window.App || {};
 window.App.Utils = window.App.Utils || {};
 
 window.App.Utils.TextureFactory = {
-    createFlowerPattern: (bgHex, fgHex) => {
+    createFlowerPattern: (bgHex, fgHex, seed = 12345) => {
+        // Simple seeded random function
+        const random = () => {
+            const x = Math.sin(seed++) * 10000;
+            return x - Math.floor(x);
+        };
+
         // "Frequency of pink higher, blobs significantly larger"
         const canvas = document.createElement('canvas');
         canvas.width = 128; canvas.height = 128; // Increased resolution
@@ -15,9 +21,9 @@ window.App.Utils.TextureFactory = {
         // Count: 12 (Higher frequency)
         // Size: Radius ~10-15 (Large blobs)
         for(let i=0; i<12; i++) {
-            const x = Math.random() * 128;
-            const y = Math.random() * 128;
-            const r = 8 + Math.random() * 8; // Radius 8-16
+            const x = random() * 128;
+            const y = random() * 128;
+            const r = 8 + random() * 8; // Radius 8-16
             
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI*2);
@@ -25,8 +31,8 @@ window.App.Utils.TextureFactory = {
             
             // "Blob" effect - add some random overlapping circles
             for(let j=0; j<3; j++) {
-                const ox = x + (Math.random() - 0.5) * r * 1.5;
-                const oy = y + (Math.random() - 0.5) * r * 1.5;
+                const ox = x + (random() - 0.5) * r * 1.5;
+                const oy = y + (random() - 0.5) * r * 1.5;
                 const or = r * 0.7;
                 ctx.beginPath();
                 ctx.arc(ox, oy, or, 0, Math.PI*2);
