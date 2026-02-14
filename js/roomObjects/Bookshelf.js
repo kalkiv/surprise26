@@ -97,7 +97,7 @@ window.App.RoomObjects.Bookshelf = class Bookshelf {
 
         // 1. Large Black Square Photo Frame (Swapped to Left)
         const lFrameGroup = new THREE.Group();
-        lFrameGroup.position.set(-3.0, shelf1Y, 1.5); 
+        lFrameGroup.position.set(-2.0, shelf1Y, 1.5); 
         lFrameGroup.rotation.y = -Math.PI / 8 + Math.PI; // Angled outward to Right
         
         // Large Black Square (Thicker 1.2)

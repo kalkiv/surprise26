@@ -42,9 +42,7 @@ window.App.UIManager = {
     },
     
     showToast(msg) {
-        this.elements.toastMsg.innerText = msg;
-        this.elements.toast.classList.add('show');
-        setTimeout(() => this.elements.toast.classList.remove('show'), 3000);
+        // Toast notifications disabled
     },
     
     showOpenButton() {

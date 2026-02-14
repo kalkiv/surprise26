@@ -380,7 +380,7 @@ window.App.Scenes.IntroScene = class IntroScene {
             p1.userData.photoMesh.material.needsUpdate = true;
             p1.userData.photoMesh.material.color.setHex(0xffffff);
         }
-        p1.position.set(0, 45, 4); 
+        p1.position.set(-4.5, 45, 4); 
         p1.rotation.x = -Math.PI / 2 + 0.2; // Leaning back slightly
         p1.rotation.z = -0.1;
         p1.userData = { isPhoto: true, meshGroup: p1 };
@@ -545,7 +545,7 @@ window.App.Scenes.IntroScene = class IntroScene {
         
         // Hide Game UI
         const nav = document.querySelector('.nav-label');
-        if(nav) nav.textContent = "It looks like a package arrived...";
+        // if(nav) nav.textContent = "Use buttons or arrow keys to look around.";
         
         // Tools and Light Switch should remain visible
         const inv = document.querySelector('.inventory-panel');
