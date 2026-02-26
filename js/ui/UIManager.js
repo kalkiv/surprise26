@@ -52,5 +52,29 @@ window.App.UIManager = {
     fadeOutUI(duration = 500) {
         this.elements.uiLayer.style.transition = `opacity ${duration}ms`;
         this.elements.uiLayer.style.opacity = 0;
+    },
+
+    // Scene Transition Fades
+    fadeOut(duration = 1000) {
+        const overlay = document.getElementById('transition-overlay');
+        if(overlay) {
+            overlay.style.transition = `opacity ${duration}ms ease`;
+            overlay.style.opacity = 1;
+        }
+        // Also fade UI
+        this.fadeOutUI(duration);
+    },
+
+    fadeIn(duration = 1000) {
+        const overlay = document.getElementById('transition-overlay');
+        if(overlay) {
+            overlay.style.transition = `opacity ${duration}ms ease`;
+            overlay.style.opacity = 0;
+        }
+        // Restore UI
+        if(this.elements.uiLayer) {
+            this.elements.uiLayer.style.transition = `opacity ${duration}ms`;
+            this.elements.uiLayer.style.opacity = 1;
+        }
     }
 };

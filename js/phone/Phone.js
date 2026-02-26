@@ -10,6 +10,7 @@ class PhoneManager {
         
         this.apps = {}; 
         this.hasUnread = false;
+        this.hasOpenedBefore = false;
         
         this.init();
     }
@@ -68,6 +69,14 @@ class PhoneManager {
 
             this.updateClock();
             this.closeApp(); // Reset to home
+
+            // First Time Open Message
+            if(!this.hasOpenedBefore) {
+                this.hasOpenedBefore = true;
+                setTimeout(() => {
+                    this.receiveMessage("Happy Valentine's Day! ❤️ Check here for hints.");
+                }, 1000);
+            }
 
             // Check for notifications
             if(this.hasUnread) {

@@ -61,41 +61,43 @@ window.addEventListener('load', () => {
 
     // --- SCENE MANAGEMENT ---
     // Instantiate scenes and store globally for access by Apps/other scenes
-    window.App.Scenes.introSceneInstance = new window.App.Scenes.IntroScene(scene, camera);
+    window.App.Scenes.startingSceneInstance = new window.App.Scenes.StartingScene(scene, camera);
+    window.App.Scenes.roomSceneInstance = new window.App.Scenes.RoomScene(scene, camera);
     window.App.Scenes.packageSceneInstance = new window.App.Scenes.PackageScene(scene, camera);
     window.App.Scenes.puzzleSceneInstance = new window.App.Scenes.PuzzleScene(scene, camera);
     window.App.Scenes.heartSceneInstance = new window.App.Scenes.HeartScene(scene, camera);
 
-    const introScene = window.App.Scenes.introSceneInstance;
+    const startingScene = window.App.Scenes.startingSceneInstance;
+    const roomScene = window.App.Scenes.roomSceneInstance;
     const packageScene = window.App.Scenes.packageSceneInstance;
     const puzzleScene = window.App.Scenes.puzzleSceneInstance;
     const heartScene = window.App.Scenes.heartSceneInstance;
     
-    let activeScene = introScene;
-    window.App.currentScene = 'intro'; // 'intro', 'package', 'puzzle', 'heart'
+    let activeScene = startingScene;
+    window.App.currentScene = 'starting'; // 'starting', 'room', 'package', 'puzzle', 'heart'
     window.App.isPackageOpened = false; // Track if cardboard box is removed
 
     function switchToScene(newSceneObj, newSceneId) {
         if(activeScene === newSceneObj) return;
         
-        const isLeavingIntro = (activeScene === introScene);
-        const delay = isLeavingIntro ? 1000 : 0;
+        const isLeavingRoom = (activeScene === roomScene);
+        const delay = isLeavingRoom ? 1000 : 0;
 
         activeScene.exit();
         activeScene = newSceneObj;
         window.App.currentScene = newSceneId;
         
-        // Special case: If going to Intro, update prop visibility
-        if(newSceneId === 'intro') {
-             if(introScene.updateProps) introScene.updateProps();
+        // Special case: If going to Room, update prop visibility
+        if(newSceneId === 'room') {
+             if(roomScene.updateProps) roomScene.updateProps();
              if(puzzleScene.heartBox) puzzleScene.heartBox.group.visible = false;
         }
 
         setTimeout(() => {
-            activeScene.enter(); 
+            activeScene.enter(window.App.currentScene); // potentially pass old scene id if needed
             
             if(newSceneId === 'package' || newSceneId === 'puzzle' || newSceneId === 'heart') {
-                if(isLeavingIntro) {
+                if(isLeavingRoom) {
                     camera.zoom = 1.0; 
                     camera.position.set(40, 40, 40);
                     camera.lookAt(0, 0, 0);
@@ -124,11 +126,19 @@ window.addEventListener('load', () => {
              }
              
              updateUIForScene(newSceneId);
+             
+             // Fade In New Scene
+             if(window.App.UIManager.fadeIn) window.App.UIManager.fadeIn(1500);
         }, delay);
     }
 
-    // Scene Transition 1: Intro -> Package
-    introScene.onComplete = () => {
+    // Scene Transition 0: Starting -> Room
+    startingScene.onComplete = () => {
+        switchToScene(roomScene, 'room');
+    };
+
+    // Scene Transition 1: Room -> Package
+    roomScene.onComplete = () => {
         const currentRot = 0; 
         window.App.state.rotY = currentRot;
         targetYRotation = currentRot; 
@@ -168,8 +178,8 @@ window.addEventListener('load', () => {
     // Back Button Logic
     function goBackOneScene() {
        homeView();
-       // Always go back to Intro Scene as per user request
-       switchToScene(introScene, 'intro');
+       // Always go back to Room Scene as per user request
+       switchToScene(roomScene, 'room');
     }
     
     const backBtn = document.getElementById('back-scene-btn');
@@ -180,7 +190,7 @@ window.addEventListener('load', () => {
     function updateUIForScene(sceneId) {
         const backBtn = document.getElementById('back-scene-btn');
         if(backBtn) {
-            if(sceneId === 'intro') {
+            if(sceneId === 'room') {
                 backBtn.style.opacity = '0.3'; 
                 backBtn.style.pointerEvents = 'none';
             } else {
@@ -199,7 +209,7 @@ window.addEventListener('load', () => {
             ambientLight.intensity = 0.7;
             keyLight.intensity = 0.8;
             fillLight.intensity = 0.6;
-            scene.fog.color.setHex(0x5C3644); 
+            if(scene.fog) scene.fog.color.setHex(0x5C3644); 
             document.body.style.background = 'linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end))';
         } else {
             spotLight.color.setHex(0xffffff); 
@@ -207,7 +217,7 @@ window.addEventListener('load', () => {
             ambientLight.intensity = 0.1; 
             keyLight.intensity = 0.1;
             fillLight.intensity = 0.1;
-            scene.fog.color.setHex(0x050505); 
+            if(scene.fog) scene.fog.color.setHex(0x050505); 
             document.body.style.background = 'linear-gradient(135deg, #111111, #000000)';
         }
 
@@ -248,7 +258,7 @@ window.addEventListener('load', () => {
     }
 
     activeScene.enter(); 
-    updateUIForScene('intro');
+    updateUIForScene('room');
     if(toggle) updateLights(toggle.checked);
 
     // --- RAYCASTER ---
@@ -258,20 +268,30 @@ window.addEventListener('load', () => {
     // --- ADMIN MENU LOGIC ---
     window.App.Admin = {
         setScene: (name) => {
-            if(name === 'intro') switchToScene(introScene, 'intro');
+            if(name === 'starting') switchToScene(startingScene, 'starting');
+            if(name === 'room') switchToScene(roomScene, 'room');
             if(name === 'package') switchToScene(packageScene, 'package');
             if(name === 'puzzle') switchToScene(puzzleScene, 'puzzle');
             if(name === 'heart') switchToScene(heartScene, 'heart');
+        },
+        skipDrive: () => {
+             if(activeScene === startingScene) {
+                  startingScene.skipToEnd();
+             } else {
+                  switchToScene(startingScene, 'starting');
+                  // Add delay to allow scene to init
+                  setTimeout(() => startingScene.skipToEnd(), 200);
+             }
         },
         toggleLight: () => {
              const t = document.getElementById('light-toggle');
              if(t) { t.checked = !t.checked; t.dispatchEvent(new Event('change')); }
         },
         breakMirrors: (doBreak) => {
-             if(introScene && introScene.mirrorGrid) {
-                introScene.mirrorGrid.group.children.forEach(m => {
+             if(roomScene && roomScene.mirrorGrid) {
+                roomScene.mirrorGrid.group.children.forEach(m => {
                     if(doBreak) {
-                        introScene.mirrorGrid.breakMirror(m);
+                        roomScene.mirrorGrid.breakMirror(m);
                     } else {
                         // Fix
                          const glass = m.children.find(c => c.userData.isMirror);
@@ -285,7 +305,7 @@ window.addEventListener('load', () => {
                          }
                     }
                 });
-                introScene.brokenMirrors = doBreak ? 6 : 0;
+                roomScene.brokenMirrors = doBreak ? 6 : 0;
              }
         },
         toggleTools: (collect) => {
@@ -409,8 +429,8 @@ window.addEventListener('load', () => {
     function rotate(dir) {
         if(window.App.state.isBoxOpen) return;
         
-        if(activeScene === introScene) {
-            introScene.rotate(dir);
+        if(activeScene === roomScene) {
+            roomScene.rotate(dir);
             return;
         }
 
@@ -459,7 +479,7 @@ window.addEventListener('load', () => {
         }
         
         // Scene Delegation
-        if(activeScene === introScene) {
+        if(activeScene === roomScene) {
             if(activeScene.resetRotation) activeScene.resetRotation();
             window.TWEEN.to(camera.position, {
                 x: 40, y: 40, z: 40, duration: 1.0, ease: "power2.inOut", onUpdate: () => camera.lookAt(0, 0, 0)
@@ -794,7 +814,8 @@ window.addEventListener('load', () => {
 
         if(activeScene) activeScene.update(time);
 
-        renderer.render(scene, camera);
+        // Use the global camera reference so scenes can swap cameras
+        renderer.render(scene, window.App.mainCamera || camera);
     }
     
     // collectPhotos function

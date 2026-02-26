@@ -36,6 +36,7 @@ window.TWEEN = {
         let repeatCount = 0;
         
         const tween = {
+            target: target,
             stopped: false,
             stop() { this.stopped = true; },
             update(now) {
@@ -91,5 +92,13 @@ window.TWEEN = {
         };
         this._tweens.push(tween);
         return tween;
+    },
+    killTweensOf(target) {
+        for(let i=this._tweens.length-1; i>=0; i--) {
+            if(this._tweens[i].target === target) {
+                this._tweens[i].stop();
+                this._tweens.splice(i, 1);
+            }
+        }
     }
 };

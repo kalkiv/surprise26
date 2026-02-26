@@ -3,13 +3,13 @@ window.App.PhoneApps = window.App.PhoneApps || {};
 
 window.App.PhoneApps.SmartHomeApp = class SmartHomeApp {
     updateLight(device, type, val) {
-         // Access objects from active scene (IntroScene has them exposed)
-         // Check if activeScene is IntroScene
+         // Access objects from active scene (RoomScene has them exposed)
+         // Check if activeScene is RoomScene
          // In main.js, activeScene is local variable. But window.App.currentScene stores ID.
          // And scene instances are usually stored globally or accessible.
          // We'll rely on global instances being exposed by Main.js or a SceneManager.
          
-         const scene = window.App.Scenes.introSceneInstance; 
+         const scene = window.App.Scenes.roomSceneInstance; 
          if(!scene) return; 
          
          if(device === 'book') {

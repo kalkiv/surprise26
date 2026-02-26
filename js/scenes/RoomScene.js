@@ -1,7 +1,7 @@
 window.App = window.App || {};
 window.App.Scenes = window.App.Scenes || {};
 
-window.App.Scenes.IntroScene = class IntroScene {
+window.App.Scenes.RoomScene = class RoomScene {
     constructor(scene, camera) {
         this.scene = scene;
         this.camera = camera;
@@ -268,7 +268,7 @@ window.App.Scenes.IntroScene = class IntroScene {
         // Floor Y (Local) raised to -5.0 to safely clear floor
         // Shifted ground loops left (X ~ 8) and extended Z clearance to -19
         // Wire Start Y lowered to 10.45 to match phone and clear Yellow Blanket
-        const curve = new THREE.CatmullRomCurve3([
+        this.wireCurve = new THREE.CatmullRomCurve3([
             new THREE.Vector3(13, 10.45, -14.5),   // Bottom of Phone
             new THREE.Vector3(13.0, 10.45, -19),   // Extend horizontally out FURHTER (Z=-19) to clear blanket spread
             new THREE.Vector3(13.5, 0, -22),       // Dangle
@@ -293,19 +293,20 @@ window.App.Scenes.IntroScene = class IntroScene {
         ]);
         
         // Thicker wire (radius 0.15)
-        const wireGeo = new THREE.TubeGeometry(curve, 40, 0.15, 8, false);
+        const wireGeo = new THREE.TubeGeometry(this.wireCurve, 40, 0.15, 8, false);
         const wireMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-        const wire = new THREE.Mesh(wireGeo, wireMat);
-        bed.group.add(wire);
+        this.wireMesh = new THREE.Mesh(wireGeo, wireMat);
+        bed.group.add(this.wireMesh);
 
         // Plug Visual (Small Cylinder at Wall)
-        const plug = new THREE.Mesh(
+        this.plugMesh = new THREE.Mesh(
             new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8),
             new THREE.MeshStandardMaterial({ color: 0x111111 })
         );
-        plug.rotation.x = Math.PI / 2; 
-        plug.position.set(10, 4, -44); // Match wire end (World X=-5, Y=-10)
-        bed.group.add(plug);
+        this.plugMesh.rotation.x = Math.PI / 2; 
+        this.plugMesh.position.set(10, 4, -44); // Match wire end (World X=-5, Y=-10)
+        this.plugMesh.userData = { isPlug: true };
+        bed.group.add(this.plugMesh);
 
         // --- HAMMER PROP (Attached to yp1) ---
         this.hammerProp = new THREE.Group();
@@ -464,8 +465,8 @@ window.App.Scenes.IntroScene = class IntroScene {
         this.boxProp.rotation.set(0, 0, 0);
         
         // Tagging recursive for raycaster
-        this.boxProp.traverse(c => { c.userData.isIntroBox = true; });
-        this.boxProp.userData = { isIntroBox: true };
+        this.boxProp.traverse(c => { c.userData.isRoomBox = true; });
+        this.boxProp.userData = { isRoomBox: true };
         
         this.group.add(this.boxProp);
 
@@ -476,7 +477,7 @@ window.App.Scenes.IntroScene = class IntroScene {
         this.heartBoxProp = hbInstance.group;
         this.heartBoxProp.scale.set(0.3, 0.3, 0.3); // Scale down
         
-        // Reparenting to IntroScene group
+        // Reparenting to RoomScene group
         this.group.add(this.heartBoxProp);
         
         // Position on Bed
@@ -720,7 +721,7 @@ window.App.Scenes.IntroScene = class IntroScene {
                 let isBox = false;
                 let parent = obj;
                 while(parent) {
-                    if(parent === boxToKeep || parent.userData.isIntroBox) { isBox = true; break; }
+                    if(parent === boxToKeep || parent.userData.isRoomBox) { isBox = true; break; }
                     parent = parent.parent;
                 }
                 
@@ -750,7 +751,7 @@ window.App.Scenes.IntroScene = class IntroScene {
                 let isBox = false;
                 let parent = obj;
                 while(parent) {
-                    if(parent === boxToKeep || parent.userData.isIntroBox) { isBox = true; break; }
+                    if(parent === boxToKeep || parent.userData.isRoomBox) { isBox = true; break; }
                     parent = parent.parent;
                 }
                 if (!isBox) {
@@ -860,7 +861,7 @@ window.App.Scenes.IntroScene = class IntroScene {
 
                 if (window.App.Phone && window.App.Phone.receiveMessage) {
                     setTimeout(() => {
-                        window.App.Phone.receiveMessage("Now put the box on the bed and figure out how to open it!");
+                        window.App.Phone.receiveMessage("Now put the box on the bed and figure out how to open the present!");
                     }, 500);
                 }
             }
@@ -985,6 +986,51 @@ window.App.Scenes.IntroScene = class IntroScene {
                 if(meta.isPhoto) {
                     // Let Main.js handle collection logic (shared)
                     return { type: 'polaroid', target: hit.object };
+                }
+
+                // PLUG (Fall)
+                if(meta.isPlug) {
+                    const plug = hit.object; // Use hit.object or this.plugMesh
+                    if(!plug.userData.isFallen) {
+                        plug.userData.isFallen = true;
+                        plug.userData.isAnimating = true;
+
+                        // Initial Pos: (10, 4, -44). Floor Local Y ~ -6.
+                        // Animate Drop
+                        window.TWEEN.to(plug.position, { 
+                            y: -5.5, 
+                            duration: 0.8, 
+                            ease: "bounce.out",
+                            onComplete: () => {
+                                plug.userData.isAnimating = false;
+                                // Force final update
+                                if(this.wireCurve && this.wireMesh) {
+                                    const lastIdx = this.wireCurve.points.length - 1;
+                                    this.wireCurve.points[lastIdx].copy(plug.position);
+                                    this.wireMesh.geometry.dispose();
+                                    this.wireMesh.geometry = new THREE.TubeGeometry(this.wireCurve, 40, 0.15, 8, false);
+                                }
+                            }
+                        });
+                        // Animate Rotation (Lie flat on floor)
+                        // Currently X=PI/2.
+                        window.TWEEN.to(plug.rotation, { 
+                            x: 0, 
+                            z: Math.PI / 2, 
+                            duration: 0.8,
+                            ease: "cubic.out"
+                        });
+                        
+                        // Optional: Feedback
+                        const toast = document.getElementById('toast');
+                        const msg = document.getElementById('toast-msg');
+                        if(toast && msg) {
+                            msg.textContent = "Oops! The plug fell out.";
+                            toast.classList.add('show');
+                            setTimeout(() => toast.classList.remove('show'), 2000);
+                        }
+                    }
+                    return true;
                 }
 
                 // PHONE PICKUP
@@ -1197,6 +1243,19 @@ window.App.Scenes.IntroScene = class IntroScene {
             });
         } else if(this.buzzGroup) {
             this.buzzGroup.visible = false;
+        }
+
+        // Update Wire Position if Plug is Falling
+        if(this.plugMesh && this.plugMesh.userData.isAnimating) {
+            if(this.wireCurve && this.wireMesh) {
+                // Update last point of curve to match plug
+                const lastIdx = this.wireCurve.points.length - 1;
+                this.wireCurve.points[lastIdx].copy(this.plugMesh.position);
+                
+                // Regenerate Geometry (Note: Performance intensive, but okay for short animation)
+                this.wireMesh.geometry.dispose();
+                this.wireMesh.geometry = new THREE.TubeGeometry(this.wireCurve, 40, 0.15, 8, false);
+            }
         }
     }
 };

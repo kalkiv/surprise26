@@ -16,6 +16,18 @@
     
     <!-- Dim Background Overlay -->
     <div id="dim-overlay"></div>
+    
+    <!-- Transition Overlay -->
+    <div id="transition-overlay"></div>
+
+    <!-- Dialogue Overlay -->
+    <div id="dialogue-overlay" style="display:none;">
+        <div class="dialogue-box">
+            <div class="dialogue-name" id="dialogue-name">Monkey</div>
+            <div class="dialogue-text" id="dialogue-text">Hello!</div>
+            <div class="dialogue-hint">[Space] to continue</div>
+        </div>
+    </div>
 
     <!-- UI Overlay -->
     <div id="ui-layer">
@@ -45,7 +57,7 @@
 
         <!-- Light Switch -->
         <label class="light-switch">
-          <input type="checkbox" id="light-toggle" checked>
+          <input type="checkbox" id="light-toggle">
           <span class="slider round"></span>
           <span class="label-text">💡 Light</span>
         </label>
@@ -77,10 +89,15 @@
             
             <div class="admin-section">
                 <span>Scene:</span>
-                <button onclick="window.App.Admin.setScene('intro')">1</button>
+                <button onclick="window.App.Admin.setScene('starting')">0</button>
+                <button onclick="window.App.Admin.setScene('room')">1</button>
                 <button onclick="window.App.Admin.setScene('package')">2</button>
                 <button onclick="window.App.Admin.setScene('puzzle')">3</button>
                 <button onclick="window.App.Admin.setScene('heart')">4</button>
+            </div>
+            
+            <div class="admin-section">
+                <button onclick="window.App.Admin.skipDrive()">Skip Drive</button>
             </div>
 
             <div class="admin-section">
@@ -418,7 +435,8 @@
     <script src="js/roomObjects/SilverBonsai.js"></script>
     
     <!-- Scenes -->
-    <script src="js/scenes/IntroScene.js"></script>
+    <script src="js/scenes/StartingScene.js"></script>
+    <script src="js/scenes/RoomScene.js"></script>
     <script src="js/scenes/PackageScene.js"></script>
     <script src="js/scenes/PuzzleScene.js"></script>
     <script src="js/scenes/HeartScene.js"></script>
