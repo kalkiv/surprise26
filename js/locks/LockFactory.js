@@ -80,13 +80,17 @@ window.App.LockFactory = {
         // --- INSTANTIATION ---
         let lockInstance;
         if (type === 'heart') {
-            lockInstance = new window.App.HeartLock();
+            // HeartLock might be in App.Locks or App. Check naming convention if fails.
+            // Assuming it's in App based on previous context, but likely it is App.Locks.HeartLock too?
+            // Let's try App.Locks.HeartLock for consistency if it exists, fallback to App.HeartLock
+            if(window.App.Locks && window.App.Locks.HeartLock) lockInstance = new window.App.Locks.HeartLock();
+            else lockInstance = new window.App.HeartLock();
         } else if (type === 'screw') {
-            lockInstance = new window.App.ScrewLock();
+            lockInstance = new window.App.Locks.ScrewLock();
         } else if (type === 'tape') {
-            lockInstance = new window.App.TapeLock();
+            lockInstance = new window.App.Locks.TapeLock();
         } else if (type === 'digit') {
-            lockInstance = new window.App.DigitLock(config.solution);
+            lockInstance = new window.App.Locks.DigitLock(config.solution);
         }
         
         const lockGroup = lockInstance.mesh;

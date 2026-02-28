@@ -18,19 +18,45 @@ window.App.CardContent = {
         const W = this.width;
         const H = this.height;
         
-        // Background Gradient
+        // Classy Cream Background
         const grad = ctx.createLinearGradient(0,0,W,H);
-        grad.addColorStop(0, '#fff0f5'); // Lavender blush
-        grad.addColorStop(1, '#ffe6ea');
+        grad.addColorStop(0, '#FFFDD0'); // Cream
+        grad.addColorStop(1, '#F5F5DC'); // Beige
         ctx.fillStyle = grad;
         ctx.fillRect(0,0,W,H);
         
-        // Paper Texture / Border
-        ctx.strokeStyle = '#ffb7c5';
-        ctx.lineWidth = 20;
-        ctx.strokeRect(30, 30, W-60, H-60);
+        // Elegant Double Border
+        ctx.strokeStyle = '#D4AF37'; // Gold
+        ctx.lineWidth = 15;
+        ctx.strokeRect(40, 40, W-80, H-80);
+        
+        ctx.strokeStyle = '#C5A028'; // Darker Gold
+        ctx.lineWidth = 4;
+        ctx.strokeRect(70, 70, W-140, H-140);
 
         return { canvas, ctx, W, H };
+    },
+
+    wrapText: function(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        let currentY = y;
+
+        for(let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            const testWidth = metrics.width;
+            if (testWidth > maxWidth && n > 0) {
+                ctx.fillText(line, x, currentY);
+                line = words[n] + ' ';
+                currentY += lineHeight;
+            }
+            else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, x, currentY);
+        return currentY + lineHeight;
     },
 
     // --- PAGE 1: FRONT COVER ---
@@ -39,21 +65,21 @@ window.App.CardContent = {
 
         ctx.textAlign = 'center';
         
-        // IMPORTANT: The cover is rendered on the "BackSide" of the mesh visible when closed.
-        // We must MIRROR the drawing context so it reads correctly.
         ctx.save();
-        ctx.translate(W, 0);
+        ctx.translate(W, 0); // Correct for back face
         ctx.scale(-1, 1);
 
         // --- Custom Content Start ---
         
-        ctx.fillStyle = '#ff477e';
-        ctx.font = 'bold 120px "Segoe UI", sans-serif';
-        ctx.fillText('Dear Vidhi', W/2, H/3);
+        ctx.fillStyle = '#D4AF37'; // Gold
+        ctx.font = 'bold 120px "Georgia", serif';
+        ctx.fillText('To my', W/2, H/3);
+        ctx.font = 'bold 140px "Georgia", serif';
+        ctx.fillText('Sweetie Pie', W/2, H/3 + 140);
         
-        // Big Heart
-        ctx.font = '400px Arial';
-        ctx.fillText('💌', W/2, H/1.8);
+        // Decor
+        ctx.font = '300px Arial';
+        ctx.fillText('💝', W/2, H/1.6); // Heart with Ribbon
 
         // --- Custom Content End ---
         
@@ -66,65 +92,51 @@ window.App.CardContent = {
     getInsideLeftTexture: function() {
         const { canvas, ctx, W, H } = this.createBaseCanvas();
         ctx.textAlign = 'center';
-
-        // --- Custom Content Start ---
-
-        ctx.fillStyle = '#ff477e';
-        ctx.font = '80px "Segoe UI", sans-serif';
-        ctx.fillText('With Love,', W/2, H/2 - 50);
         
-        ctx.font = 'bold 80px "Segoe UI", sans-serif';
-        ctx.fillText('Vinny', W/2, H/2 + 50);
-
-        // --- Custom Content End ---
-
+        // Simple Elegant Graphic
+        ctx.font = '400px Arial';
+        ctx.fillText('🌹', W/2, H/2);
+        
         return new THREE.CanvasTexture(canvas);
     },
 
     // --- PAGE 3: INSIDE RIGHT (Main Message) ---
     getInsideRightTexture: function() {
         const { canvas, ctx, W, H } = this.createBaseCanvas();
-        ctx.textAlign = 'center';
-
+        
         // --- Custom Content Start ---
+        
+        const text = "I love you soooo much. I am so filled with joy that you are my Valentine this year, and every other year forever. You are always gorgeous you always dress up whenever we go out. It makes me super happy to know how much effort you always put in. I am so happy whenever I get to see you and spend time with you. I just want to squeeze your face and always look at it because it is just sooo cute. Every date we go on makes me feel so whole and every conversation we have about our relationship or our future makes me excited to explore the rest of our lives together.";
+        
+        const closing = "Happy Valentines day to my favorite person in the whole wide world.";
+        
+        // Title
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#8B0000'; // Dark Red
+        ctx.font = 'italic bold 70px "Georgia", serif';
+        // ctx.fillText('My Love,', W/2, 180);
 
-        ctx.fillStyle = '#ffffff';
-        // (Optional white box behind text if needed)
-        // ctx.fillRect(100, 100, W-200, H-200); 
+        // Body Text
+        ctx.textAlign = 'left'; 
+        ctx.fillStyle = '#333'; // Dark Grey for readability
+        ctx.font = 'italic 42px "Georgia", serif';
         
-        ctx.fillStyle = '#d6336c';
-        ctx.font = 'bold 90px "Segoe UI", sans-serif';
-        ctx.fillText('HAPPY', W/2, 250);
-        ctx.fillText('VALENTINES', W/2, 350);
-        ctx.fillText('DAY!', W/2, 450);
+        const margin = 100;
+        const startY = 160;
         
-        ctx.fillStyle = '#333';
-        ctx.font = '50px "Segoe UI", sans-serif';
-        ctx.fillText('I love you sooooooooo much!', W/2, 600);
+        // Use wrapText helper
+        let nextY = this.wrapText(ctx, text, margin, startY, W - (margin*2), 60);
         
-        // Divider Line
-        ctx.beginPath();
-        ctx.moveTo(W/2 - 100, 680);
-        ctx.lineTo(W/2 + 100, 680);
-        ctx.strokeStyle = '#ff477e';
-        ctx.lineWidth = 5;
-        ctx.stroke();
-
-        ctx.font = 'italic 55px Georgia, serif';
-        ctx.fillStyle = '#555';
+        // Closing - Centered
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#D4AF37'; // Gold
+        ctx.font = 'bold 45px "Georgia", serif';
         
-        const lines = [
-            "This key opens the gates",
-            "to happiness and joy.",
-            "May your heart always",
-            "be full of love."
-        ];
-        lines.forEach((line, i) => {
-            ctx.fillText(line, W/2, 800 + (i * 80));
-        });
+        this.wrapText(ctx, closing, W/2, nextY + 80, W - (margin*2), 60);
         
-        ctx.font = '100px Arial';
-        ctx.fillText('💖', W/2, 1250);
+        // Heart
+        ctx.font = '80px Arial';
+        ctx.fillText('❤️', W/2, H - 150);
 
         // --- Custom Content End ---
 

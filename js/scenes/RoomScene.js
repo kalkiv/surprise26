@@ -544,6 +544,16 @@ window.App.Scenes.RoomScene = class RoomScene {
         this.isActive = true;
         this.group.visible = true;
         
+        // Switch Music
+        if(window.App.music && window.App.music.playTrack) {
+            window.App.music.playTrack('room');
+        }
+
+        // Phone Ringing
+        if(this.phoneMesh && this.phoneMesh.visible) {
+             if(window.App.music) window.App.music.startLoop('phone_ring');
+        }
+
         // Hide Game UI
         const nav = document.querySelector('.nav-label');
         // if(nav) nav.textContent = "Use buttons or arrow keys to look around.";
@@ -659,6 +669,8 @@ window.App.Scenes.RoomScene = class RoomScene {
 
     exit() {
         this.isActive = false;
+        
+        if(window.App.music) window.App.music.stopLoop('phone_ring');
         
         // RESET ROOM ROTATION TO CENTER (Home View)
         this.resetRotation();
@@ -1038,6 +1050,8 @@ window.App.Scenes.RoomScene = class RoomScene {
                     const phoneMesh = meta.parentPhone || hit.object;
                     phoneMesh.visible = false;
                     
+                    if(window.App.music) window.App.music.stopLoop('phone_ring');
+                    
                     // Add to Inventory
                     const toolPhone = document.getElementById('tool-phone');
                     if(toolPhone) toolPhone.style.display = 'flex';
@@ -1142,6 +1156,9 @@ window.App.Scenes.RoomScene = class RoomScene {
 
                         const open = !group.userData.isOpen;
                         group.userData.isOpen = open;
+                        
+                        if(window.App.music) window.App.music.playSFX('drawer');
+
                         const originalX = group.userData.originalX;
                         // Slide along Local X
                         const targetX = open ? originalX + 8 : originalX;

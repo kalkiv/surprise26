@@ -219,8 +219,25 @@ window.App.CardboardBox = class CardboardBox {
             
             // IF TAPED, BLOCK OPENING
             if(this.isTaped) {
-                // Shake box? Or Toolkit hint?
-                window.App.UIManager.showToast("It's taped shut. Use a tool!");
+                // Check if user has the cutter
+                const cutter = document.getElementById('tool-cutter');
+                // It is set to 'flex' when found. Default 'none'.
+                const hasCutter = cutter && cutter.style.display !== 'none';
+
+                if (!hasCutter) {
+                    window.App.UIManager.showToast("The package is sealed. You need something sharp to open it.");
+                    
+                    // Trigger Phone Notification
+                    if(window.App.Phone && window.App.Phone.receiveMessage) {
+                        // Small delay for natural feel
+                        setTimeout(() => {
+                            window.App.Phone.receiveMessage("There should be tools somewhere in your room. Try looking for them.");
+                        }, 1000);
+                    }
+
+                } else {
+                    window.App.UIManager.showToast("Use your box cutter to open it!");
+                }
                 return true; // We handled the click
             }
 
@@ -233,6 +250,8 @@ window.App.CardboardBox = class CardboardBox {
     cutTape() {
         if(!this.isTaped) return;
         
+        if(window.App.music) window.App.music.playSFX('cutter');
+
         // Start Position (Left side of tape)
         // Tape length is boxW (26). Local X goes -13 to 13.
         

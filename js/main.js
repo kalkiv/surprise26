@@ -62,19 +62,21 @@ window.addEventListener('load', () => {
     // --- SCENE MANAGEMENT ---
     // Instantiate scenes and store globally for access by Apps/other scenes
     window.App.Scenes.startingSceneInstance = new window.App.Scenes.StartingScene(scene, camera);
+    window.App.Scenes.titleSceneInstance = new window.App.Scenes.TitleScene(scene, camera);
     window.App.Scenes.roomSceneInstance = new window.App.Scenes.RoomScene(scene, camera);
     window.App.Scenes.packageSceneInstance = new window.App.Scenes.PackageScene(scene, camera);
     window.App.Scenes.puzzleSceneInstance = new window.App.Scenes.PuzzleScene(scene, camera);
     window.App.Scenes.heartSceneInstance = new window.App.Scenes.HeartScene(scene, camera);
 
+    const titleScene = window.App.Scenes.titleSceneInstance;
     const startingScene = window.App.Scenes.startingSceneInstance;
     const roomScene = window.App.Scenes.roomSceneInstance;
     const packageScene = window.App.Scenes.packageSceneInstance;
     const puzzleScene = window.App.Scenes.puzzleSceneInstance;
     const heartScene = window.App.Scenes.heartSceneInstance;
     
-    let activeScene = startingScene;
-    window.App.currentScene = 'starting'; // 'starting', 'room', 'package', 'puzzle', 'heart'
+    let activeScene = titleScene;
+    window.App.currentScene = 'title'; // 'title', 'starting', 'room', 'package', 'puzzle', 'heart'
     window.App.isPackageOpened = false; // Track if cardboard box is removed
 
     function switchToScene(newSceneObj, newSceneId) {
@@ -131,6 +133,14 @@ window.addEventListener('load', () => {
              if(window.App.UIManager.fadeIn) window.App.UIManager.fadeIn(1500);
         }, delay);
     }
+
+    // Scene Transition -1: Title -> Starting
+    titleScene.onComplete = () => {
+        window.App.UIManager.fadeOut(1000); // Fade out to black
+        setTimeout(() => {
+            switchToScene(startingScene, 'starting');
+        }, 1000);
+    };
 
     // Scene Transition 0: Starting -> Room
     startingScene.onComplete = () => {
@@ -253,13 +263,14 @@ window.addEventListener('load', () => {
 
     if(toggle) {
         toggle.addEventListener('change', (e) => {
+            if(window.App.music) window.App.music.playSFX('click');
             updateLights(e.target.checked);
         });
     }
 
+    if(toggle) updateLights(toggle.checked);
     activeScene.enter(); 
     updateUIForScene('room');
-    if(toggle) updateLights(toggle.checked);
 
     // --- RAYCASTER ---
     const raycaster = new THREE.Raycaster();
@@ -268,6 +279,7 @@ window.addEventListener('load', () => {
     // --- ADMIN MENU LOGIC ---
     window.App.Admin = {
         setScene: (name) => {
+            if(name === 'title') switchToScene(titleScene, 'title');
             if(name === 'starting') switchToScene(startingScene, 'starting');
             if(name === 'room') switchToScene(roomScene, 'room');
             if(name === 'package') switchToScene(packageScene, 'package');

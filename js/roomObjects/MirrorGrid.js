@@ -104,6 +104,7 @@ window.App.RoomObjects.MirrorGrid = class MirrorGrid {
         const glass = mirrorGroup.children.find(c => c.type === 'Mesh' && c.geometry.type === 'BoxGeometry' && c.userData.isMirror);
         if(!glass || glass.userData.isBroken) return false;
 
+        if(window.App.music) window.App.music.playSFX('glass');
         glass.userData.isBroken = true;
         glass.visible = false; // Hide glass
 

@@ -22,14 +22,24 @@ window.App.Scenes.StartingScene = class StartingScene {
         this.monkeyDistance = 0;
         this.monkeySpeedMult = 1.0;
         this.monkeySpeedTimer = 0;
+        this.monkeyAutoAbilityTimer = 0; // New timer
         this.monkeyBoosted = false;
+        
+        // Monologue (Self Talk)
+        this.monologueIndex = 0;
+        this.monologueLines = [
+            { name: "Egg", text: "What a super tiring day. Can't wait to go home, snuggle, and watch a movie with my favooorite person in the whole wide world." },
+            { name: "Egg", text: "Oh no! I've left my phone at home. What should I do..." }
+        ];
+
+        // Dialogue (With Monkey)
         this.dialogueIndex = 0;
         this.dialogueLines = [
-            { name: "Egg", text: "Hey!" },
-            { name: "Monkey", text: "Oh, hello there!" },
-            { name: "Egg", text: "I'm heading home. Need a lift?" },
-            { name: "Monkey", text: "Sure! I'll race you there!" },
-            { name: "Egg", text: "You're on!" }
+            { name: "Egg", text: "Phew! I'm so glad you are here. I completely forget my phone at home and I was worried that I wouldn't be able to call you and tell you how amazing you are" },
+            { name: "Monkey", text: "Don't worry! I think I saw your phone at home. You better hurry back. I think the mailman dropped a package for you..." },
+            { name: "Egg", text: "Hmm... I really do need to get my phone before we go on our date tonight." },
+            { name: "Egg", text: "Okay, I'll see you back at home." },
+            { name: "Monkey", text: "Last one there is a rotten... oh." }
         ];
         
         // Driving State
@@ -38,8 +48,14 @@ window.App.Scenes.StartingScene = class StartingScene {
         
         // Boost Logic
         this.boostMax = 2.0;
-        this.boostCurrent = 2.0;
+        this.boostCurrent = 0.0; // Consumable duration
         this.isBoosting = false;
+        
+        // Item Logic
+        this.currentItem = null; // 'BOOST' or 'JUMP'
+        this.isJumping = false;
+        this.jumpHeight = 0;
+        this.jumpVel = 0;
 
         // Curve Logic
         this.driveDistance = 0;
@@ -86,8 +102,8 @@ window.App.Scenes.StartingScene = class StartingScene {
         
         if(this.monkeyCar) {
             this.monkeyCar.visible = true;
-            // Monkey Car parked further up
-            const carPos = new THREE.Vector3(50, -60, 2.5);
+            // Monkey Car parked at start line (Same X as player: 300)
+            const carPos = new THREE.Vector3(300, -60, 2.5);
             this.monkeyCar.position.copy(carPos);
         }
         
@@ -98,8 +114,8 @@ window.App.Scenes.StartingScene = class StartingScene {
         }
 
         if(this.car) {
-             // Player Car: Right Side (60) and Further Away (100)
-             this.car.position.set(100, 60, 2.5);
+             // Player Car: Right Side (60) and Further Away (300) to clear building
+             this.car.position.set(300, 60, 2.5);
              this.car.rotation.set(0,0,0);
              this.currentLane = 2; // Sync state
         }
@@ -226,7 +242,58 @@ window.App.Scenes.StartingScene = class StartingScene {
 
         this.createInteractionSign();
         this.generateObstacles();
+        this.generateItemBoxes();
         this.createMonkeyAndCar();
+    }
+    
+    generateItemBoxes() {
+        // More items throughout map
+        const locations = [0.08, 0.16, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85];
+        locations.forEach(t => {
+            // Random Lane
+            const lane = Math.floor(Math.random() * 3);
+            this.createItemBox(t, lane);
+        });
+    }
+    
+    createItemBox(t, lane) {
+        const pt = this.path.getPointAt(t);
+        const tan = this.path.getTangentAt(t);
+        const norm = new THREE.Vector3(-tan.y, tan.x, 0).normalize();
+        
+        const laneOffset = this.laneOffset[lane];
+        const pos = pt.clone().add(norm.clone().multiplyScalar(laneOffset));
+        pos.z += 15; 
+        
+        const g = new THREE.Group();
+        g.position.copy(pos);
+        
+        const size = 20;
+        const boxGeo = new THREE.BoxGeometry(size, size, size);
+        
+        const c = document.createElement('canvas'); c.width=64; c.height=64;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#FFD700'; ctx.fillRect(0,0,64,64); 
+        ctx.fillStyle = '#FFF'; ctx.font='bold 40px Arial'; ctx.textAlign='center'; ctx.fillText('?', 32, 48);
+        const tex = new THREE.CanvasTexture(c);
+        
+        const mat = new THREE.MeshBasicMaterial({ map: tex });
+        const mesh = new THREE.Mesh(boxGeo, mat);
+        g.add(mesh);
+        
+        const glow = new THREE.Mesh(new THREE.BoxGeometry(size*1.2, size*1.2, size*1.2), new THREE.MeshBasicMaterial({color:0xFFFFFF, transparent:true, opacity:0.3, blending: THREE.AdditiveBlending}));
+        g.add(glow);
+
+        this.group.add(g);
+        
+        this.obstacles.push({
+            mesh: g,
+            t: t,
+            lane: lane,
+            type: 'ITEM',
+            active: true,
+            rotSpeed: 2.0
+        });
     }
 
     createMonkeyAndCar() {
@@ -827,6 +894,32 @@ window.App.Scenes.StartingScene = class StartingScene {
         this.boostBarFill.style.cssText = 'width:100%; height:100%; background:#00E676; border-radius:8px; transition: width 0.1s linear;';
         this.boostBarContainer.appendChild(this.boostBarFill);
         document.body.appendChild(this.boostBarContainer);
+
+        // Create Traffic Light UI
+        this.countdownEl = document.createElement('div');
+        this.countdownEl.style.cssText = 'position:fixed; top:30%; left:50%; transform:translate(-50%, -50%); width:100px; height:240px; background:#222; border:4px solid #111; border-radius:15px; display:none; flex-direction:column; align-items:center; justify-content:space-evenly; padding:10px; z-index:2000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);';
+        
+        // Lights
+        this.light1 = document.createElement('div');
+        this.light1.style.cssText = 'width:60px; height:60px; background:#440000; border-radius:50%; box-shadow:inset 0 0 10px #000;';
+        
+        this.light2 = document.createElement('div');
+        this.light2.style.cssText = 'width:60px; height:60px; background:#440000; border-radius:50%; box-shadow:inset 0 0 10px #000;';
+        
+        this.light3 = document.createElement('div');
+        this.light3.style.cssText = 'width:60px; height:60px; background:#440000; border-radius:50%; box-shadow:inset 0 0 10px #000;';
+
+        this.countdownEl.appendChild(this.light1);
+        this.countdownEl.appendChild(this.light2);
+        this.countdownEl.appendChild(this.light3);
+        document.body.appendChild(this.countdownEl);
+        
+        // Create Roulette UI (Larger)
+        this.rouletteEl = document.createElement('div');
+        this.rouletteEl.style.cssText = 'position:fixed; top:20px; left:20px; width:120px; height:120px; background:rgba(0,0,0,0.6); border:6px solid gold; border-radius:15px; display:none; align-items:center; justify-content:center; font-size:60px; color:white; z-index:1000;';
+        document.body.appendChild(this.rouletteEl);
+        this.rouletteIcon = document.createElement('div');
+        this.rouletteEl.appendChild(this.rouletteIcon);
     }
 
     exit() {
@@ -850,6 +943,11 @@ window.App.Scenes.StartingScene = class StartingScene {
             document.body.removeChild(this.boostBarContainer);
             this.boostBarContainer = null;
         }
+        if(this.countdownEl && this.countdownEl.parentNode) { document.body.removeChild(this.countdownEl); this.countdownEl = null; }
+        if(this.rouletteEl && this.rouletteEl.parentNode) { document.body.removeChild(this.rouletteEl); this.rouletteEl = null; }
+        
+        // Stop Loop
+        if(window.App.music) window.App.music.stopLoop('car_engine');
     }
 
     handleKeyDown = (e) => {
@@ -899,11 +997,19 @@ window.App.Scenes.StartingScene = class StartingScene {
                 
             } else {
                 this.player.position.x = targetX;
-                this.introState = 'WAITING_FOR_PLAYER';
+                this.introState = 'MONOLOGUE';
+                this.monologueIndex = 0;
+                this.showMonologue(); // Start automatic monologue
                 
                 // Allow player control
                 this.camAngle = 0; // Look forward
             }
+        }
+        else if(this.introState === 'MONOLOGUE') {
+             if(this.keys.space && !this.lastSpace) {
+                 this.advanceMonologue();
+             }
+             this.lastSpace = this.keys.space;
         }
         else if(this.introState === 'WAITING_FOR_PLAYER') {
              const dist = this.player.position.distanceTo(this.monkey.position);
@@ -949,27 +1055,63 @@ window.App.Scenes.StartingScene = class StartingScene {
                 this.monkey.visible = false;
                 
                 // Set monkey car distance to its actual position logic
-                // MonkeyCar was at X=50 (set in startMonkeyIntro). 
-                this.monkeyDistance = 50; 
+                // MonkeyCar was at X=300
+                this.monkeyDistance = 300; 
             }
         } else if(this.introState === 'DRIVING') {
             // Drive Monkey Car away
-            let speed = 500; // Base Player Speed
+            let speed = 500; 
             
-            // Scripted Overtake Logic
-            if(this.driveDistance > 14500 && !this.monkeyBoosted) {
-                this.monkeyBoosted = true;
-                // If behind, rubber-band to just behind player to ensure visible overtake
-                if(this.monkeyDistance < this.driveDistance) {
-                    this.monkeyDistance = this.driveDistance - 500;
+            // Monkey Auto-Ability Logic (Periodic)
+            this.monkeyAutoAbilityTimer += dt;
+            if(this.monkeyAutoAbilityTimer > 6.0) { // Every 6 seconds
+                this.monkeyAutoAbilityTimer = 0;
+                // Give ability if not currently using one
+                if(!this.monkeyBoosting && !this.monkeyJumping) {
+                    const rnd = Math.random();
+                    if(rnd > 0.6) {
+                        // Boost
+                        this.monkeyBoosting = 2.0;
+                    } else if(rnd > 0.3) {
+                        // Jump
+                        this.monkeyJumping = true;
+                        this.monkeyJumpVel = 500;
+                        this.monkeyJumpHeight = 0;
+                    }
+                    // 30% chance to do nothing (just drive)
                 }
             }
 
-            if(this.monkeyBoosted) {
-                // Uber Boost to ensure overtake
-                speed = 1200; 
+            // Apply Monkey Boost
+            if(this.monkeyBoosting > 0) {
+                this.monkeyBoosting -= dt;
+                speed *= 1.8; // Boost Speed
+            }
+            
+            // Apply Monkey Jump Physics
+            if(this.monkeyJumping) {
+                this.monkeyJumpHeight += this.monkeyJumpVel * dt;
+                this.monkeyJumpVel -= 1500 * dt;
+                if(this.monkeyJumpHeight <= 0) {
+                    this.monkeyJumpHeight = 0;
+                    this.monkeyJumping = false;
+                }
+            }
+
+            // Scripted Overtake Logic (Neighborhood ~17000)
+            if(this.driveDistance > 17000 && !this.monkeyScriptBoost) {
+                this.monkeyScriptBoost = true;
+                if(this.monkeyDistance < this.driveDistance) {
+                    this.monkeyDistance = this.driveDistance - 500;
+                }
+                // Also give monkey a boost item immediately
+                this.monkeyBoosting = 3.0; 
+            }
+
+            if(this.monkeyScriptBoost && this.monkeyDistance < this.totalLength) {
+                // Ensure they stay fast at end
+                speed = Math.max(speed, 650);
             } else {
-                // Standard Oscillation
                 this.monkeySpeedMult = 0.95 + Math.sin(time * 1.5) * 0.25;
                 speed *= this.monkeySpeedMult;
             }
@@ -1028,11 +1170,14 @@ window.App.Scenes.StartingScene = class StartingScene {
                 this.monkeyLaneOffset += (targetOffset - this.monkeyLaneOffset) * lerpFactor;
 
                 const pos = pt.clone().add(norm.clone().multiplyScalar(this.monkeyLaneOffset));
-                pos.z += 2.5;
-                const angle = Math.atan2(tan.y, tan.x);
+                // Apply Jump Height
+                pos.z += 2.5 + (this.monkeyJumpHeight || 0);
                 
+                const angle = Math.atan2(tan.y, tan.x);
                 this.monkeyCar.position.copy(pos);
                 this.monkeyCar.rotation.set(0,0,angle);
+                
+                if(this.monkeyJumping) this.monkeyCar.rotateX(-0.2);
             }
         }
         // --------------------------
@@ -1075,6 +1220,9 @@ window.App.Scenes.StartingScene = class StartingScene {
             this.perspectiveCamera.position.lerp(new THREE.Vector3(cx, cy, this.player.position.z+100), 0.1);
             this.perspectiveCamera.lookAt(this.player.position);
             
+            // Rotate Player to face away from camera (Back of egg fixed to camera)
+            this.player.rotation.z = this.camAngle + Math.PI;
+
             // Interaction Logic (Car Entry Only)
             // Only allow driving AFTER talking to monkey (WAITING_FOR_RACE)
             if(!this.hasDriven && this.introState === 'WAITING_FOR_RACE') {
@@ -1089,22 +1237,116 @@ window.App.Scenes.StartingScene = class StartingScene {
 
                      if(this.keys.space) {
                          this.state = 'DRIVING';
-                         this.introState = 'DRIVING'; // Start Race
+                         this.introState = 'COUNTDOWN';
+                         this.countdownTimer = 3.9;
+                         this.lastCountdownInt = 4;
                          
                          this.player.visible = false;
                          this.interactSign.visible = false;
                          
-                         // Start at car position (X=100) (From setup)
-                         // But driveDistance is "distance along path".
-                         // Car at X=100 is approx 100 on path.
-                         this.driveDistance = 100; 
+                         // Move Start Line forward
+                         this.driveDistance = 800; 
                          this.currentLane = 2; 
-                         window.App.UIManager.showToast("Go! Watch out for curves!");
+
+                         // Align Monkey
+                         this.monkeyDistance = 800;
+                         this.monkeyLane = 0; // Left lane
+                         this.monkeyLaneOffset = -60; // Sync visual offset
+                         this.monkeyCar.visible = true; // Ensure visible
+                         
+                         // Start Car Loop
+                         if(window.App.music) window.App.music.startLoop('car_engine');
                      }
                 } else {
                     this.interactSign.visible = false;
                 }
             }
+        }
+        else if(this.introState === 'COUNTDOWN') {
+             this.countdownTimer -= dt;
+             this.countdownEl.style.display = 'flex';
+             
+             // Reset
+             this.light1.style.background = '#440000'; this.light1.style.boxShadow = 'inset 0 0 10px #000';
+             this.light2.style.background = '#440000'; this.light2.style.boxShadow = 'inset 0 0 10px #000';
+             this.light3.style.background = '#440000'; this.light3.style.boxShadow = 'inset 0 0 10px #000';
+
+             // SFX Logic
+             const currentInt = Math.ceil(this.countdownTimer);
+             if(currentInt !== this.lastCountdownInt) {
+                 if(window.App.music && window.App.music.playSFX) {
+                     if(currentInt === 3) window.App.music.playSFX('beep_low');
+                     if(currentInt === 2) window.App.music.playSFX('beep_low');
+                     if(currentInt === 1) window.App.music.playSFX('beep_low');
+                     if(currentInt <= 0 && this.lastCountdownInt > 0) window.App.music.playSFX('start'); 
+                 }
+                 this.lastCountdownInt = currentInt;
+             }
+
+             if(this.countdownTimer > 3) {
+                 // Info: Wait
+             } else if(this.countdownTimer > 2) {
+                 // 3: Red
+                 this.light1.style.background = '#FF0000'; 
+                 this.light1.style.boxShadow = '0 0 20px #FF0000, inset 0 0 5px #FFF';
+             } else if(this.countdownTimer > 1) {
+                 // 2: Yellow
+                 this.light1.style.background = '#FF0000'; this.light1.style.boxShadow = '0 0 20px #FF0000, inset 0 0 5px #FFF';
+                 this.light2.style.background = '#FFFF00'; this.light2.style.boxShadow = '0 0 20px #FFFF00, inset 0 0 5px #FFF';
+             } else if(this.countdownTimer > 0) {
+                 // 1: Green (Prepare)
+                 this.light1.style.background = '#FF0000'; this.light1.style.boxShadow = '0 0 20px #FF0000, inset 0 0 5px #FFF';
+                 this.light2.style.background = '#FFFF00'; this.light2.style.boxShadow = '0 0 20px #FFFF00, inset 0 0 5px #FFF';
+                 this.light3.style.background = '#00FF00'; this.light3.style.boxShadow = '0 0 20px #00FF00, inset 0 0 5px #FFF';
+             } else {
+                 // GO: All Green
+                 this.light1.style.background = '#00FF00'; this.light1.style.boxShadow = '0 0 30px #00FF00, inset 0 0 5px #FFF';
+                 this.light2.style.background = '#00FF00'; this.light2.style.boxShadow = '0 0 30px #00FF00, inset 0 0 5px #FFF';
+                 this.light3.style.background = '#00FF00'; this.light3.style.boxShadow = '0 0 30px #00FF00, inset 0 0 5px #FFF';
+                 
+                 // Fade out logic separate? Or just hide when state changes
+                 if(this.countdownTimer < -1.0) {
+                     this.countdownEl.style.display = 'none';
+                     this.introState = 'DRIVING';
+                 }
+             }
+             
+             // Allow start immediately at 0 (Logic override: Mario Kart you usually control AT Go)
+             if(this.introState !== 'DRIVING' && this.countdownTimer <= 0) {
+                 this.introState = 'DRIVING';
+                 // Keep light visible for 1 sec
+                 setTimeout(() => { this.countdownEl.style.display = 'none'; }, 1000);
+
+                 // Ensure engine loop is running if it wasn't
+                 if(window.App.music) window.App.music.startLoop('car_engine');
+             }
+
+             // Ensure car is positioned
+             const t = this.driveDistance / this.totalLength;
+             const pt = this.path.getPointAt(t);
+             const tan = this.path.getTangentAt(t);
+             const angle = Math.atan2(tan.y, tan.x);
+             this.car.position.copy(pt); this.car.position.z += 2.5; this.car.rotation.set(0,0,angle);
+             const norm = new THREE.Vector3(-tan.y, tan.x, 0).normalize();
+             const lanePos = pt.clone().add(norm.multiplyScalar(this.laneOffset[this.currentLane]));
+             lanePos.z += 2.5;
+             this.car.position.copy(lanePos);
+             const camPos = lanePos.clone().sub(tan.clone().multiplyScalar(200)); camPos.z += 100;
+             this.perspectiveCamera.position.set(camPos.x, camPos.y, camPos.z);
+             this.perspectiveCamera.lookAt(lanePos.clone().add(new THREE.Vector3(0,0,20)));
+
+             // Update Monkey Position during Countdown
+             const mT = this.monkeyDistance / this.totalLength;
+             const mPt = this.path.getPointAt(mT);
+             const mTan = this.path.getTangentAt(mT);
+             const mNorm = new THREE.Vector3(-mTan.y, mTan.x, 0).normalize();
+             const mPos = mPt.clone().add(mNorm.multiplyScalar(this.monkeyLaneOffset));
+             const mAngle = Math.atan2(mTan.y, mTan.x);
+             
+             this.monkeyCar.position.copy(mPos); 
+             this.monkeyCar.position.z += 2.5; 
+             this.monkeyCar.rotation.set(0, 0, mAngle);
+             this.monkeyCar.visible = true;
         }
         else if(this.state === 'DRIVING') {
             // Show Boost Bar
@@ -1112,38 +1354,70 @@ window.App.Scenes.StartingScene = class StartingScene {
             
             let speed = 500.0;
             
-            // Boost Logic (Space)
-            // Need to check specific collision timers to allow/disallow boosting?
-            // Usually boost overrides normal speed, but not collision penalties?
-            // "If they press space, it makes them go 1.5x speed"
-            // If bouncing or slowed, boost probably shouldn't work fully?
-            // Let's assume Boosting is intentional and consumes bar.
+            // JUMP LOGIC
+            // Only jump if we have the jump item
+            if(this.introState === 'DRIVING' && this.currentItem === 'JUMP' && (this.keys.up || this.keys.w || this.keys.space) && !this.isJumping) {
+                this.isJumping = true;
+                this.jumpVel = 600; // Increased Physics for better clearance
+                this.jumpHeight = 0;
+                
+                if(window.App.music) window.App.music.playSFX('jump'); // SFX
+                
+                // Consume Item
+                this.currentItem = null; 
+                this.rouletteEl.style.display = 'none'; // Hide UI
+                window.App.UIManager.showToast("Used Jump!");
+            }
             
-            let canBoost = true;
-            if(this.bounceTimer && time < this.bounceTimer) canBoost = false;
+            if(this.isJumping) {
+                this.jumpHeight += this.jumpVel * dt;
+                this.jumpVel -= 1500 * dt; // Gravity
+                if(this.jumpHeight <= 0) {
+                    this.jumpHeight = 0;
+                    this.isJumping = false;
+                }
+            }
+
+            // BOOST LOGIC
+            let canUseBoost = true;
+            if(this.bounceTimer && time < this.bounceTimer) canUseBoost = false;
             
-            if(this.keys.space && this.boostCurrent > 0 && canBoost) {
-                speed *= 1.5;
-                this.boostCurrent -= dt;
-                if(this.boostCurrent < 0) this.boostCurrent = 0;
-            } else {
-                // Regen slowly? (Optional, but good UX)
-                if(this.boostCurrent < this.boostMax) {
-                    this.boostCurrent += dt * 0.5; // 4s to full regen
+            if(this.currentItem === 'BOOST' && this.keys.space && canUseBoost && !this.isBoosting) {
+                // Consume Item immediately to start boost duration
+                this.currentItem = null;
+                this.rouletteEl.style.display = 'none'; 
+                this.boostCurrent = 2.0; // 2 Seconds Duration
+                this.isBoosting = true;
+                if(window.App.music) window.App.music.playSFX('boost'); // SFX
+                window.App.UIManager.showToast("Boost!");
+            }
+            
+            // Apply Boost
+            if(this.isBoosting) {
+                if(this.boostCurrent > 0) {
+                    speed *= 1.8;
+                    this.boostCurrent -= dt;
+                } else {
+                    this.isBoosting = false;
                 }
             }
             
-            // Update UI
-            const pct = (this.boostCurrent / this.boostMax) * 100;
-            this.boostBarFill.style.width = pct + '%';
-            this.boostBarFill.style.background = (pct < 20) ? '#FF5252' : '#00E676';
+            // UI Update: Bar shows duration remaining if boosting
+            if(this.isBoosting) {
+                this.boostBarContainer.style.display = 'block';
+                const pct = (this.boostCurrent / 2.0) * 100;
+                this.boostBarFill.style.width = pct + '%';
+                this.boostBarFill.style.background = '#00E676';
+            } else {
+                 this.boostBarContainer.style.display = 'none'; // Hide when not boosting
+            }
             
             // Collision Effects
             if(this.bounceTimer && time < this.bounceTimer) {
-                speed = -300.0; // Bounce Backwards
+                speed = -300.0; 
             }
             else if(this.slowTimer && time < this.slowTimer) {
-                speed = 100.0; // Slowed down
+                speed = 100.0; 
             }
             
             this.driveDistance += speed * dt;
@@ -1156,6 +1430,8 @@ window.App.Scenes.StartingScene = class StartingScene {
             if(this.driveDistance > 24500) { 
                 this.state = 'CUTSCENE'; 
                 this.subState=0; 
+                // Stop FX
+                if(window.App.music) window.App.music.stopLoop('car_engine');
             }
             
             if(this.keys.left && !this.lastLeft) if(this.currentLane < 2) this.currentLane++;
@@ -1175,65 +1451,122 @@ window.App.Scenes.StartingScene = class StartingScene {
             
             // Position Car
             const carPos = pt.clone().add(norm.clone().multiplyScalar(this.currentLaneOffset));
-            carPos.z += 2.5; 
+            carPos.z += 2.5 + this.jumpHeight;
             const angle = Math.atan2(tan.y, tan.x);
             this.car.position.copy(carPos);
             this.car.rotation.set(0, 0, angle);
+            
+            if(this.isJumping) this.car.rotateX(-0.2);
 
             // Camera
             const camPos = carPos.clone().sub(tan.clone().multiplyScalar(200));
-            camPos.z += 100;
+            camPos.z += 100 - (this.jumpHeight * 0.5);
+            camPos.z = Math.max(camPos.z, 20);
             this.perspectiveCamera.position.set(camPos.x, camPos.y, camPos.z);
             this.perspectiveCamera.lookAt(carPos.clone().add(new THREE.Vector3(0,0,20)));
             
             // Collision Detection
-            // Only check if moving forward and not bouncing
             if(speed > 0 && (!this.bounceTimer || time > this.bounceTimer)) {
                 const playerL = 80;
                 const playerW = 40;
 
                 this.obstacles.forEach(o => {
                     if(!o.active) return;
-                    const obsDist = o.t * this.totalLength;
-                    const distDiff = obsDist - this.driveDistance; // Positive if ahead (obstacle is further along track)
                     
-                    // Determine Obstacle Size
+                    if(o.type === 'ITEM') {
+                         o.mesh.rotation.z += 2.0 * dt;
+                         o.mesh.rotation.y += 2.0 * dt;
+                    }
+                    
+                    const obsDist = o.t * this.totalLength;
+                    const distDiff = obsDist - this.driveDistance; 
+                    
                     let obsL = 70, obsW = 40;
                     if(o.type === 'BUS') { obsL = 140; obsW = 40; }
                     else if(o.type === 'BIKER') { obsL = 30; obsW = 15; }
                     else if(o.type === 'CAR_ONCOMING') { obsL = 70; obsW = 36; }
                     else if(o.type === 'CONE') { obsL = 18; obsW = 18; }
+                    else if(o.type === 'ITEM') { obsL = 30; obsW = 30; }
 
-                    // Check Longitudinal Overlap (Hitbox Length)
-                    // Allow some leniency (0.8 factor) so you don't hit "air"
                     const minL = (playerL + obsL) / 2 * 0.85;
 
                     if(Math.abs(distDiff) < minL) {
                         const obsLat = this.laneOffset[o.lane];
                         const latDist = Math.abs(this.currentLaneOffset - obsLat);
                         
-                        // Check Lateral Overlap (Hitbox Width)
-                        // Make hitboxes skinny (0.6 factor) to allow tight squeezing
                         const minW = (playerW + obsW) / 2 * 0.6;
                         
+                        // JUMP OVER LOGIC
+                        // Eased threshold to ensure clearing obstacles is reliable
+                        if(this.isJumping && this.jumpHeight > 5 && o.type !== 'ITEM') {
+                            return; // Safe!
+                        }
+                        
                         if(latDist < minW) {
-                            if(o.type === 'CONE') {
-                                // Slow Interaction
+                            if(o.type === 'ITEM') {
+                                window.App.UIManager.showToast("Got Item Box!");
+                                o.active = false; o.mesh.visible = false;
+                                
+                                this.rouletteEl.style.display = 'flex';
+                                this.rouletteTimer = 0;
+                                this.rouletteState = 'SPINNING';
+                                // Random Reward
+                                this.pendingReward = Math.random() > 0.5 ? 'BOOST' : 'JUMP';
+                                
+                            } else if(o.type === 'CONE') {
                                 this.slowTimer = time + 1.0;
                                 window.App.UIManager.showToast("Slowed Down!");
-                                o.active = false; // Consume cone
+                                o.active = false; 
                                 o.mesh.visible = false;
                             } else {
-                                // Crash Interaction
-                                this.bounceTimer = time + 0.5; // Short bounce
+                                this.bounceTimer = time + 0.5; 
                                 window.App.UIManager.showToast("Ouch!");
                             }
                         }
                     }
                 });
             }
+            
+            // Roulette Update
+            if(this.rouletteEl.style.display !== 'none' && this.rouletteState === 'SPINNING') {
+                this.rouletteTimer += dt;
+                const icons = ['🍄', '🪶', '🍌', '⭐', '💣'];
+                const idx = Math.floor(time * 10) % icons.length;
+                this.rouletteIcon.textContent = icons[idx];
+                
+                if(this.rouletteTimer > 2.0) {
+                    this.rouletteState = 'DONE';
+                    
+                    if(this.pendingReward === 'BOOST') {
+                        this.currentItem = 'BOOST';
+                        this.rouletteIcon.textContent = '🚀'; 
+                        window.App.UIManager.showToast("One-Time Boost! (Space)");
+                    } else {
+                        this.currentItem = 'JUMP';
+                        this.rouletteIcon.textContent = '🪶'; 
+                        window.App.UIManager.showToast("One-Time Jump! (Up/W)");
+                    }
+                    // Keep UI visible until used
+                }
+            }
         }
         else if(this.state === 'CUTSCENE') {
+             // Ensure Monkey Car is parked at House
+             if(this.monkeyCar) {
+                 this.monkeyCar.visible = true;
+                 const houseT = 24700 / this.totalLength;
+                 const pt = this.path.getPointAt(houseT);
+                 const tan = this.path.getTangentAt(houseT);
+                 const angle = Math.atan2(tan.y, tan.x);
+                 const norm = new THREE.Vector3(-tan.y, tan.x, 0).normalize();
+                 // Parked in Lane 0 (-60)
+                 const pos = pt.clone().add(norm.multiplyScalar(-60));
+                 pos.z += 2.5;
+                 
+                 this.monkeyCar.position.copy(pos);
+                 this.monkeyCar.rotation.set(0, 0, angle);
+             }
+
              // Camera follows player walking to house
              const targetPos = this.player.visible ? this.player.position : (this.endCutscenePos || new THREE.Vector3(24800, 200, 0));
              const camOffset = new THREE.Vector3(-200, -150, 150);
@@ -1242,15 +1575,35 @@ window.App.Scenes.StartingScene = class StartingScene {
              this.perspectiveCamera.lookAt(targetPos);
              
              if(this.subState === 0) {
-                 // Exit Car
-                 this.subState = 1;
+                 // Trigger End Dialogue
+                 const overlay = document.getElementById('dialogue-overlay');
+                 const nameEl = document.getElementById('dialogue-name');
+                 const textEl = document.getElementById('dialogue-text');
+                 
+                 overlay.style.display = 'block';
+                 nameEl.textContent = 'Egg';
+                 nameEl.style.color = '#ff477e';
+                 textEl.textContent = "Dang it. I guess I lost the race... Oh well. Time to go get my phone.";
+                 
+                 this.subState = -1; // Waiting for click
+             }
+             else if(this.subState === -1) {
+                 // Waiting for user input (handled in onPointerDown or Space key)
+                 if(this.keys.space && !this.lastSpace) {
+                     this.endDialogue();
+                 }
+                 this.lastSpace = this.keys.space;
+             }
+             else if(this.subState === 1) {
+                 // Exit Car (Visuals)
+                 this.subState = 2; // Move to walking immediately next frame
                  this.player.visible = true;
                  // Place player next to car
                  const carPos = this.car.position.clone();
                  this.player.position.copy(carPos).add(new THREE.Vector3(0, -40, 0)); // Next to driver side
                  this.camAngle = Math.PI / 2; // Face house (approx)
              }
-             else if(this.subState === 1) {
+             else if(this.subState === 2) {
                  // Walk to House
                  const housePos = this.endCutscenePos.clone();
                  // Target is door facing the road. House is at Y=-250. Road at Y=0.
@@ -1268,7 +1621,7 @@ window.App.Scenes.StartingScene = class StartingScene {
                      this.player.position.z = 10 + Math.sin(time * 15) * 2;
                  } else {
                      // Reached Door
-                     this.subState = 2;
+                     this.subState = 3;
                      window.App.UIManager.showToast("Welcome Home!");
                      
                      // Trigger Fade Out
@@ -1297,8 +1650,8 @@ window.App.Scenes.StartingScene = class StartingScene {
 
     resetPositions() {
         this.player.position.set(-200, 0, 0);
-        // Player Car: Right Side (60) and Further Away (100)
-        this.car.position.set(100, 60, 2.5);
+        // Player Car: Right Side (60) and Further Away (300) to clear building
+        this.car.position.set(300, 60, 2.5);
         this.car.rotation.set(0,0,0); 
         this.currentLane = 2; // Lane 2 is Right (60)
         this.state = 'WALKING';
@@ -1351,7 +1704,50 @@ window.App.Scenes.StartingScene = class StartingScene {
         this.dialogueIndex++;
         this.showDialogue();
     }
+    
+    showMonologue() {
+        const overlay = document.getElementById('dialogue-overlay');
+        const nameEl = document.getElementById('dialogue-name');
+        const textEl = document.getElementById('dialogue-text');
+        
+        if(this.monologueIndex < this.monologueLines.length) {
+            const line = this.monologueLines[this.monologueIndex];
+            overlay.style.display = 'block';
+            nameEl.textContent = line.name;
+            textEl.textContent = line.text;
+            nameEl.style.color = '#ff477e';
+        } else {
+            // End Monologue -> Transition to Walking/Interaction
+            overlay.style.display = 'none';
+            this.introState = 'WAITING_FOR_PLAYER';
+        }
+    }
+    
+    advanceMonologue() {
+        this.monologueIndex++;
+        this.showMonologue();
+    }
 
-    onPointerDown() { return false; }
+    endDialogue() {
+        const overlay = document.getElementById('dialogue-overlay');
+        overlay.style.display = 'none';
+        this.subState = 1; // Proceed to exit animation
+    }
+
+    onPointerDown() { 
+        if(this.state === 'CUTSCENE' && this.subState === -1) {
+            this.endDialogue();
+            return true;
+        }
+        if(this.introState === 'MONOLOGUE') {
+            this.advanceMonologue();
+            return true;
+        }
+        if(this.introState === 'DIALOGUE') {
+            this.advanceDialogue();
+            return true;
+        }
+        return false; 
+    }
     onDrop() { return false; }
 };

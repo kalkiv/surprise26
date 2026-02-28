@@ -89,6 +89,7 @@
             
             <div class="admin-section">
                 <span>Scene:</span>
+                <button onclick="window.App.Admin.setScene('title')">Title</button>
                 <button onclick="window.App.Admin.setScene('starting')">0</button>
                 <button onclick="window.App.Admin.setScene('room')">1</button>
                 <button onclick="window.App.Admin.setScene('package')">2</button>
@@ -193,17 +194,19 @@
 
     <!-- Card Modal -->
     <div class="modal-overlay" id="card-modal">
-        <div class="modal-card" style="background: #fff0f5; color: #880e4f; text-align: center; padding: 2.5rem; border: 3px solid #f8bbd0; border-radius: 15px; box-shadow: 0 10px 25px rgba(233, 30, 99, 0.2); max-width: 500px;">
-            <h2 style="font-family: 'Brush Script MT', cursive; font-size: 3rem; margin-bottom: 1.5rem; color: #d81b60;">To My Love</h2>
-            <div style="font-family: 'Georgia', serif; font-size: 1.2rem; line-height: 1.8; color: #4a1428;">
-                <p>Happy Valentine's Day!</p>
-                <p>You have unlocked my heart.</p>
-                <p>Every moment with you is a treasure.</p>
-                <p>Here's to many more adventures together.</p>
-                <p style="font-size: 2rem; margin-top: 1rem;">❤️</p>
+        <div class="modal-card" style="background: #FFFDD0; color: #333; text-align: left; padding: 3rem; border: 8px solid #D4AF37; outline: 3px solid #C5A028; border-radius: 5px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <h2 style="font-family: 'Georgia', serif; font-size: 2.5rem; margin-bottom: 1.5rem; color: #D4AF37; text-align: center; border-bottom: 2px solid #D4AF37; padding-bottom: 1rem;">To my Sweetie Pie</h2>
+            <div style="font-family: 'Georgia', serif; font-size: 1.1rem; line-height: 1.6; color: #333; font-style: italic;">
+                <p>I love you soooo much. I am so filled with joy that you are my Valentine this year, and every other year forever.</p>
+                <p>You are always gorgeous you always dress up whenever we go out. It makes me super happy to know how much effort you always put in.</p>
+                <p>I am so happy whenever I get to see you and spend time with you. I just want to squeeze your face and always look at it because it is just sooo cute.</p>
+                <p>Every date we go on makes me feel so whole and every conversation we have about our relationship or our future makes me excited to explore the rest of our lives together.</p>
+                <br>
+                <p style="text-align: center; font-weight: bold; font-size: 1.2rem; color: #D4AF37;">Happy Valentines day to my favorite person in the whole wide world.</p>
+                <p style="text-align: center; font-size: 2rem; margin-top: 1rem;">❤️</p>
             </div>
-            <div style="margin-top: 2rem;">
-                <button class="btn btn-primary" style="background: #e91e63; border-color: #c2185b;" onclick="document.getElementById('card-modal').classList.remove('active')">Close Card</button>
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="btn btn-primary" style="background: #D4AF37; border-color: #C5A028; color: #FFF; font-family: 'Georgia', serif;" onclick="document.getElementById('card-modal').classList.remove('active')">Close Card</button>
             </div>
         </div>
     </div>
@@ -412,6 +415,7 @@
     <script src="js/puzzles/PuzzleRegistry.js"></script>
 
     <script src="js/utils/Tween.js"></script>
+    <script src="js/utils/MusicManager.js"></script>
     <script src="js/ui/PuzzleModal.js"></script>
     <script src="js/ui/UIManager.js"></script>
     
@@ -435,6 +439,7 @@
     <script src="js/roomObjects/SilverBonsai.js"></script>
     
     <!-- Scenes -->
+    <script src="js/scenes/TitleScene.js"></script>
     <script src="js/scenes/StartingScene.js"></script>
     <script src="js/scenes/RoomScene.js"></script>
     <script src="js/scenes/PackageScene.js"></script>

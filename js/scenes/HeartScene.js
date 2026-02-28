@@ -51,6 +51,9 @@ window.App.Scenes.HeartScene = class HeartScene {
         // Pulse
         hb.pulse();
         window.App.UIManager.showToast("All keys found! Opening...");
+        
+        // Play Romantic Song
+        if(window.App.music) window.App.music.playTrack('love');
 
         setTimeout(() => {
             hb.animateOpen();
