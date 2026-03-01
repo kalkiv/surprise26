@@ -165,11 +165,12 @@ window.App.Locks.DigitLock = class {
     }
 
     check() {
-        new window.TWEEN.Tween(this.submitBtn.position)
-            .to({ y: 0.15 }, 100)
-            .yoyo(true)
-            .repeat(1)
-            .start();
+        window.TWEEN.to(this.submitBtn.position, {
+            y: 0.15,
+            duration: 0.1,
+            yoyo: true,
+            repeat: 1
+        });
         
         const isCorrect = this.current.join('') === this.solution.join('');
         

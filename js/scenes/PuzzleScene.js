@@ -95,13 +95,15 @@ window.App.Scenes.PuzzleScene = class PuzzleScene {
             }
         });
 
-        // Add Note Mesh if available
-        if (this.heartBox.noteMesh) {
-            objectsToCheck.push(this.heartBox.noteMesh);
-        }
-        
-        if (this.heartBox.polaroidStack) {
-            objectsToCheck.push(this.heartBox.polaroidStack);
+        // Add Note Mesh if available (Only if box is open)
+        if (window.App.state.isBoxOpen) {
+            if (this.heartBox.noteMesh) {
+                objectsToCheck.push(this.heartBox.noteMesh);
+            }
+            
+            if (this.heartBox.polaroidStack) {
+                objectsToCheck.push(this.heartBox.polaroidStack);
+            }
         }
 
         const intersects = raycaster.intersectObjects(objectsToCheck, true);

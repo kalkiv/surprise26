@@ -43,26 +43,32 @@ window.App.Locks.TapeLock = class {
         const targetRotY = -Math.PI / 1.5; 
         
         // 1. Peel Phase
-        new window.TWEEN.Tween(this.pivotGroup.rotation)
-            .to({ y: targetRotY }, 800)
-            .easing(window.TWEEN.Easing.Circular.Out)
-            .start();
+        window.TWEEN.to(this.pivotGroup.rotation, {
+            y: targetRotY,
+            duration: 0.8,
+            ease: "power2.out"
+        });
         
         // 2. Detach Phase
         const m = this.mesh;
-        new window.TWEEN.Tween(m.position)
-            .to({ y: m.position.y + 10, x: m.position.x - 5 }, 600)
-            .delay(600)
-            .easing(window.TWEEN.Easing.Quadratic.In)
-            .start();
+        window.TWEEN.to(m.position, {
+            y: m.position.y + 10, 
+            x: m.position.x - 5,
+            duration: 0.6,
+            delay: 0.6,
+            ease: "power2.in"
+        });
             
-        new window.TWEEN.Tween(m.scale)
-            .to({ x:0, y:0, z:0 }, 400)
-            .delay(1000)
-            .onComplete(() => {
+        window.TWEEN.to(m.scale, {
+            x: 0, 
+            y: 0, 
+            z: 0,
+            duration: 0.4,
+            delay: 1.0,
+            onComplete: () => {
                 m.visible = false;
                 if(containerCallback) containerCallback();
-            })
-            .start();
+            }
+        });
     }
 };

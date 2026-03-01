@@ -43,25 +43,30 @@ window.App.Locks.ScrewLock = class {
         const m = this.mesh;
         
         // Rotation
-        new window.TWEEN.Tween(m.rotation)
-            .to({ z: Math.PI * 4 }, 1500)
-            .easing(window.TWEEN.Easing.Quadratic.InOut)
-            .start();
+        window.TWEEN.to(m.rotation, {
+            z: Math.PI * 4,
+            duration: 1.5,
+            ease: "power2.inOut"
+        });
 
         // Position (Pull out)
-        new window.TWEEN.Tween(m.position)
-            .to({ z: m.position.z + 5 }, 1500)
-            .easing(window.TWEEN.Easing.Quadratic.In)
-            .onComplete(() => {
+        window.TWEEN.to(m.position, {
+            z: m.position.z + 5,
+            duration: 1.5,
+            ease: "power2.in",
+            onComplete: () => {
                  m.visible = false;
                  if(containerCallback) containerCallback();
-            })
-            .start();
+            }
+        });
             
         // Scale out at end
-        new window.TWEEN.Tween(m.scale)
-            .to({ x:0, y:0, z:0 }, 500)
-            .delay(1000)
-            .start();
+        window.TWEEN.to(m.scale, {
+            x: 0, 
+            y: 0, 
+            z: 0,
+            duration: 0.5,
+            delay: 1.0
+        });
     }
 };
